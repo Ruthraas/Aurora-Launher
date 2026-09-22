@@ -8,6 +8,7 @@ import { Chip } from "@/components/chip";
 import { useInstances } from "./use-instances";
 import { useInstallEvents } from "./use-install-events";
 import { CreateInstanceDialog } from "./CreateInstanceDialog";
+import { ImportInstanceButton } from "./ImportInstanceButton";
 import { InstanceCard } from "./InstanceCard";
 import type { LoaderKind } from "@/lib/tauri/commands/instances";
 
@@ -51,6 +52,7 @@ export function InstancesPage() {
                 className="h-8 w-44 pl-8 text-sm"
               />
             </div>
+            <ImportInstanceButton />
             <CreateInstanceDialog />
           </>
         }

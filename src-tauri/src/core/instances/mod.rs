@@ -2,6 +2,7 @@ pub mod install;
 pub mod launch;
 pub mod mods;
 pub mod options_txt;
+pub mod transfer;
 
 use std::fs;
 use std::path::PathBuf;

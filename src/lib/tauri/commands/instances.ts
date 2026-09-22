@@ -97,6 +97,16 @@ export function readInstanceLog(id: string, relativePath: string): Promise<strin
   return callCommand<string>("read_instance_log", { id, relativePath });
 }
 
+/** Devolve o caminho absoluto do `.zip` gerado — o backend já abre a
+ *  pasta no explorador de arquivos. */
+export function exportInstance(id: string): Promise<string> {
+  return callCommand<string>("export_instance", { id });
+}
+
+export function importInstanceFromBytes(zipBytes: number[]): Promise<Instance> {
+  return callCommand<Instance>("import_instance_from_bytes", { zipBytes });
+}
+
 export interface FabricLoaderEntry {
   loader: { version: string; stable: boolean };
 }

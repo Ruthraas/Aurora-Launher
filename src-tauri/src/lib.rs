@@ -42,6 +42,8 @@ pub fn run() {
             commands::instances::open_instance_folder,
             commands::instances::list_instance_logs,
             commands::instances::read_instance_log,
+            commands::instances::export_instance,
+            commands::instances::import_instance_from_bytes,
             commands::mods::get_mod_compatibility,
             commands::mods::install_mod,
             commands::mods::cancel_job,

@@ -342,3 +342,55 @@ pub fn read_instance_log(app: AppHandle, id: Uuid, relative_path: String) -> App
     let tail = if bytes.len() as u64 > MAX_LOG_READ_BYTES { &bytes[bytes.len() - MAX_LOG_READ_BYTES as usize..] } else { &bytes[..] };
     Ok(String::from_utf8_lossy(tail).into_owned())
 }
+
+/// Exporta a instância pra um `.zip` (config, mods, saves — NÃO as
+/// bibliotecas/assets do cache compartilhado, ver
+/// `core::instances::transfer::export_instance`) dentro de
+/// `<dados do app>/exports/`, e já abre essa pasta no explorador — sem
+/// diálogo nativo de "salvar como" (o app não tem esse plugin), então
+/// o destino é fixo e previsível em vez de perguntar onde salvar.
+#[tauri::command]
+pub fn export_instance(app: AppHandle, id: Uuid) -> AppResult<String> {
+    let store = instance_store(&app)?;
+    let instance = store.get(id)?;
+
+    let exports_dir = app.path().app_data_dir().map_err(AppError::from)?.join("exports");
+    std::fs::create_dir_all(&exports_dir).map_err(AppError::from)?;
+
+    let safe_name: String =
+        instance.name.trim().chars().map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' { c } else { '_' }).collect();
+    let dest = exports_dir.join(format!("{safe_name}.aurorapack.zip"));
+    crate::core::instances::transfer::export_instance(&store, id, &dest)?;
+
+    // não é crítico se o explorador não abrir (ex.: SO sem GUI) — o
+    // caminho de volta pro front já é o suficiente pra UI mostrar
+    // "exportado em <caminho>" de qualquer jeito.
+    let _ = app.opener().open_path(exports_dir.to_string_lossy(), None::<&str>);
+
+    Ok(dest.to_string_lossy().into_owned())
+}
+
+/// Importa um `.zip` exportado por `export_instance` — os bytes vêm
+/// inteiros pelo IPC (mesmo padrão já usado pra upload de skin/capa,
+/// `commands::accounts`), gravados num arquivo temporário só pra
+/// `transfer::import_instance` ler como zip de verdade. Sem diálogo
+/// nativo de "abrir arquivo", o front usa um `<input type="file">`
+/// normal e manda os bytes.
+#[tauri::command]
+pub fn import_instance_from_bytes(app: AppHandle, zip_bytes: Vec<u8>) -> AppResult<Instance> {
+    let tmp_path = std::env::temp_dir().join(format!("aurora-import-{}.zip", Uuid::new_v4()));
+    std::fs::write(&tmp_path, &zip_bytes).map_err(AppError::from)?;
+
+    let store = instance_store(&app)?;
+    let result = crate::core::instances::transfer::import_instance(&store, &tmp_path);
+    let _ = std::fs::remove_file(&tmp_path);
+    let instance = result?;
+
+    // bibliotecas/assets/client.jar/Java não vêm no zip (ficam no
+    // cache compartilhado) — dispara a mesma instalação usada em
+    // "criar instância"/"tentar de novo", que pula o que já estiver
+    // certo no cache local.
+    spawn_install(&app, instance.id, instance.mc_version.clone(), instance.loader.clone());
+
+    Ok(instance)
+}

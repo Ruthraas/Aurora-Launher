@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { RotateCw, Settings, Trash2, TriangleAlert } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { Download, Loader2, RotateCw, Settings, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlayButton } from "@/components/play-button";
 import { ProgressBar } from "@/components/progress-bar";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import type { Instance } from "@/lib/tauri/commands/instances";
+import { exportInstance, type Instance } from "@/lib/tauri/commands/instances";
 import { useInstallProgressStore } from "./install-progress-store";
 import { useDeleteInstance, useLaunchInstance, useRetryInstanceInstall } from "./use-instance-mutations";
 import { installStageLabels } from "./install-stage-labels";
@@ -16,6 +17,7 @@ export function InstanceCard({ instance }: { instance: Instance }) {
   const deleteInstance = useDeleteInstance();
   const launchInstance = useLaunchInstance();
   const retryInstall = useRetryInstanceInstall();
+  const exportMutation = useMutation({ mutationFn: () => exportInstance(instance.id) });
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
@@ -36,6 +38,15 @@ export function InstanceCard({ instance }: { instance: Instance }) {
           <Button
             variant="ghost"
             size="icon-sm"
+            title="Exportar instância (.zip)"
+            disabled={exportMutation.isPending}
+            onClick={() => exportMutation.mutate()}
+          >
+            {exportMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             disabled={deleteInstance.isPending}
             onClick={() => setConfirmingDelete(true)}
           >
@@ -43,6 +54,7 @@ export function InstanceCard({ instance }: { instance: Instance }) {
           </Button>
         </div>
       </div>
+      {exportMutation.isError && <p className="mt-1 text-xs text-destructive">{exportMutation.error.message}</p>}
 
       <ConfirmDialog
         open={confirmingDelete}
