@@ -248,6 +248,7 @@ pub fn update_instance_settings(
     ram_min_mb: u32,
     ram_max_mb: u32,
     jvm_flag_preset: JvmFlagPreset,
+    custom_jvm_args: Option<String>,
 ) -> AppResult<Instance> {
     if ram_min_mb == 0 || ram_max_mb < ram_min_mb {
         return Err(AppError::InvalidInput("intervalo de memória inválido".to_string()).into());
@@ -257,6 +258,9 @@ pub fn update_instance_settings(
     instance.ram_min_mb = ram_min_mb;
     instance.ram_max_mb = ram_max_mb;
     instance.jvm_flag_preset = jvm_flag_preset;
+    if let Some(custom_jvm_args) = custom_jvm_args {
+        instance.custom_jvm_args = custom_jvm_args.trim().to_string();
+    }
     store.save(&instance)?;
     Ok(instance)
 }

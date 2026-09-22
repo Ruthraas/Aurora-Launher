@@ -31,6 +31,7 @@ export interface Instance {
   ramMinMb: number;
   ramMaxMb: number;
   jvmFlagPreset: JvmFlagPreset;
+  customJvmArgs: string;
   status: InstanceStatus;
   errorMessage: string | null;
   modpackOrigin: ModpackOrigin | null;
@@ -73,8 +74,9 @@ export function updateInstanceSettings(
   ramMinMb: number,
   ramMaxMb: number,
   jvmFlagPreset: JvmFlagPreset,
+  customJvmArgs?: string,
 ): Promise<Instance> {
-  return callCommand<Instance>("update_instance_settings", { id, ramMinMb, ramMaxMb, jvmFlagPreset });
+  return callCommand<Instance>("update_instance_settings", { id, ramMinMb, ramMaxMb, jvmFlagPreset, customJvmArgs });
 }
 
 export function openInstanceFolder(id: string): Promise<null> {

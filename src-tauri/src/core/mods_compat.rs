@@ -343,6 +343,7 @@ mod tests {
             ram_min_mb: 1024,
             ram_max_mb: 2048,
             jvm_flag_preset: JvmFlagPreset::None,
+            custom_jvm_args: String::new(),
             status: InstanceStatus::Ready,
             error_message: None,
             modpack_origin: None,

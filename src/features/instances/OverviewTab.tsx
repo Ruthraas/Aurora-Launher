@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { ProgressBar } from "@/components/progress-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { Instance, JvmFlagPreset } from "@/lib/tauri/commands/instances";
 import { openInstanceFolder, updateInstanceSettings } from "@/lib/tauri/commands/instances";
 import { getRecommendedOptimizations, installOptimizations } from "@/lib/tauri/commands/optimization";
@@ -27,6 +28,7 @@ export function OverviewTab({ instance }: { instance: Instance }) {
   const queryClient = useQueryClient();
   const [ramGb, setRamGb] = useState(Math.round(instance.ramMaxMb / 1024));
   const [preset, setPreset] = useState<JvmFlagPreset>(instance.jvmFlagPreset);
+  const [customJvmArgs, setCustomJvmArgs] = useState(instance.customJvmArgs);
   const [jobId, setJobId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showSuccess, setShowSuccess] = useState(false);
@@ -36,11 +38,12 @@ export function OverviewTab({ instance }: { instance: Instance }) {
   useEffect(() => {
     setRamGb(Math.round(instance.ramMaxMb / 1024));
     setPreset(instance.jvmFlagPreset);
-  }, [instance.id, instance.ramMaxMb, instance.jvmFlagPreset]);
+    setCustomJvmArgs(instance.customJvmArgs);
+  }, [instance.id, instance.ramMaxMb, instance.jvmFlagPreset, instance.customJvmArgs]);
 
   const saveSettings = useMutation({
-    mutationFn: (next: { ramGb: number; preset: JvmFlagPreset }) =>
-      updateInstanceSettings(instance.id, 1024, next.ramGb * 1024, next.preset),
+    mutationFn: (next: { ramGb: number; preset: JvmFlagPreset; customJvmArgs: string }) =>
+      updateInstanceSettings(instance.id, 1024, next.ramGb * 1024, next.preset, next.customJvmArgs),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: instancesQueryKey }),
   });
 
@@ -203,7 +206,7 @@ export function OverviewTab({ instance }: { instance: Instance }) {
             step={1}
             value={[ramGb]}
             onValueChange={([value]) => setRamGb(value)}
-            onValueCommit={() => saveSettings.mutate({ ramGb, preset })}
+            onValueCommit={() => saveSettings.mutate({ ramGb, preset, customJvmArgs })}
           />
         </div>
 
@@ -214,7 +217,7 @@ export function OverviewTab({ instance }: { instance: Instance }) {
             onValueChange={(value) => {
               const next = value as JvmFlagPreset;
               setPreset(next);
-              saveSettings.mutate({ ramGb, preset: next });
+              saveSettings.mutate({ ramGb, preset: next, customJvmArgs });
             }}
           >
             <SelectTrigger className="w-full">
@@ -225,6 +228,17 @@ export function OverviewTab({ instance }: { instance: Instance }) {
               <SelectItem value="g1gcOptimized">{JVM_PRESET_LABEL.g1gcOptimized}</SelectItem>
             </SelectContent>
           </Select>
+
+          <p className="mt-3 mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">Flags extras</p>
+          <Input
+            placeholder="ex.: -Dfoo=bar -XX:+AlwaysPreTouch"
+            value={customJvmArgs}
+            onChange={(event) => setCustomJvmArgs(event.target.value)}
+            onBlur={() => {
+              if (customJvmArgs !== instance.customJvmArgs) saveSettings.mutate({ ramGb, preset, customJvmArgs });
+            }}
+          />
+          <p className="mt-1.5 text-xs text-muted-foreground">Separadas por espaço — aplicadas depois do preset, pra quem sabe o que está fazendo.</p>
         </div>
 
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void openInstanceFolder(instance.id)}>

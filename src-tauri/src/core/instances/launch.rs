@@ -168,6 +168,7 @@ pub async fn launch(
         instance.jvm_flag_preset,
         instance.ram_min_mb,
         instance.ram_max_mb,
+        &instance.custom_jvm_args,
     );
 
     let argv = build_launch_argv(&jvm_args, &main_class, &game_args);
@@ -211,12 +212,19 @@ fn finalize_jvm_args(
     jvm_flag_preset: JvmFlagPreset,
     ram_min_mb: u32,
     ram_max_mb: u32,
+    custom_jvm_args: &str,
 ) -> Vec<String> {
     if is_legacy {
         jvm_args.push(format!("-Djava.library.path={natives_directory}"));
         jvm_args.push("-cp".to_string());
         jvm_args.push(classpath.to_string());
     }
+
+    // Flags digitadas na mão vão por ÚLTIMO — se o usuário souber o
+    // que está fazendo e repetir uma flag do preset (ex.: outro
+    // -XX:MaxGCPauseMillis=), a JVM usa a última ocorrência, então a
+    // customizada vence de propósito.
+    jvm_args.extend(custom_jvm_args.split_whitespace().map(str::to_string));
 
     for (i, flag) in crate::core::jvm_flags::flags(jvm_flag_preset).into_iter().enumerate() {
         jvm_args.insert(i, flag);
@@ -233,13 +241,13 @@ mod tests {
 
     #[test]
     fn ram_flags_come_first_then_preset_then_rest() {
-        let result = finalize_jvm_args(vec!["-Dfoo=bar".to_string()], false, "natives", "cp.jar", JvmFlagPreset::None, 1024, 2048);
+        let result = finalize_jvm_args(vec!["-Dfoo=bar".to_string()], false, "natives", "cp.jar", JvmFlagPreset::None, 1024, 2048, "");
         assert_eq!(result, vec!["-Xms1024M".to_string(), "-Xmx2048M".to_string(), "-Dfoo=bar".to_string()]);
     }
 
     #[test]
     fn preset_flags_land_between_ram_and_original_args() {
-        let result = finalize_jvm_args(vec!["-Dfoo=bar".to_string()], false, "natives", "cp.jar", JvmFlagPreset::G1gcOptimized, 1024, 2048);
+        let result = finalize_jvm_args(vec!["-Dfoo=bar".to_string()], false, "natives", "cp.jar", JvmFlagPreset::G1gcOptimized, 1024, 2048, "");
         assert_eq!(result[0], "-Xms1024M");
         assert_eq!(result[1], "-Xmx2048M");
         assert!(result.len() > 3, "preset G1gcOptimized devia inserir flags no meio");
@@ -248,7 +256,7 @@ mod tests {
 
     #[test]
     fn legacy_version_appends_library_path_and_classpath() {
-        let result = finalize_jvm_args(Vec::new(), true, "/natives/dir", "a.jar;b.jar", JvmFlagPreset::None, 512, 1024);
+        let result = finalize_jvm_args(Vec::new(), true, "/natives/dir", "a.jar;b.jar", JvmFlagPreset::None, 512, 1024, "");
         assert!(result.contains(&"-Djava.library.path=/natives/dir".to_string()));
         assert!(result.contains(&"-cp".to_string()));
         assert!(result.contains(&"a.jar;b.jar".to_string()));
@@ -259,7 +267,7 @@ mod tests {
 
     #[test]
     fn non_legacy_version_does_not_append_classpath_flag() {
-        let result = finalize_jvm_args(Vec::new(), false, "/natives/dir", "a.jar", JvmFlagPreset::None, 512, 1024);
+        let result = finalize_jvm_args(Vec::new(), false, "/natives/dir", "a.jar", JvmFlagPreset::None, 512, 1024, "");
         assert!(!result.contains(&"-cp".to_string()));
     }
 }

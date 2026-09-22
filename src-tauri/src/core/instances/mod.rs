@@ -116,6 +116,13 @@ pub struct Instance {
     pub ram_max_mb: u32,
     #[serde(default)]
     pub jvm_flag_preset: JvmFlagPreset,
+    /// Flags extras que o usuário digitou na mão (separadas por
+    /// espaço), acrescentadas DEPOIS das do preset — pra quem sabe o
+    /// que está fazendo e quer algo que nenhum preset cobre. Recurso
+    /// padrão em qualquer launcher concorrente (MultiMC, Prism, app do
+    /// Modrinth).
+    #[serde(default)]
+    pub custom_jvm_args: String,
     pub status: InstanceStatus,
     /// Preenchido quando `status == Error`, pra mostrar na UI o motivo
     /// real em vez de um "falhou" genérico.
@@ -198,6 +205,7 @@ impl InstanceStore {
             ram_min_mb,
             ram_max_mb,
             jvm_flag_preset: JvmFlagPreset::default(),
+            custom_jvm_args: String::new(),
             status: InstanceStatus::NotInstalled,
             error_message: None,
             modpack_origin: None,
