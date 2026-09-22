@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# App só empacota pra Windows (ver src-tauri/tauri.conf.json — bundlers
+# nsis/msi) — roda em windows-latest pra bater com o ambiente real de
+# build/release, não porque o Rust/TS em si sejam Windows-only.
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache do cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências do frontend
+        run: npm ci
+
+      - name: Typecheck do frontend
+        run: npx tsc --noEmit
+
+      - name: Build de produção do frontend
+        run: npm run build
+
+      # Sem -D warnings de propósito por enquanto: o projeto já tem
+      # alguns warnings de dead_code conhecidos (funções/campos
+      # preparados pra uso futuro, ver comentários no código) — travar
+      # o CI nisso faria toda PR falhar por algo não relacionado a ela.
+      - name: cargo clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets
+
+      - name: cargo test
+        working-directory: src-tauri
+        run: cargo test

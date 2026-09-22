@@ -1,0 +1,44 @@
+name: Release
+
+# Dispara numa tag "v*" (ex.: v0.3.0) — mesmo fluxo manual que rodou
+# nas releases v0.1.0/v0.2.0 (npm run tauri build + gh release
+# create), só que automático a partir daqui.
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache do cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências do frontend
+        run: npm ci
+
+      - name: Build dos instaladores (Tauri)
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Aurora Launcher ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
