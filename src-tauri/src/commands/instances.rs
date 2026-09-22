@@ -1,5 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use base64::Engine;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_opener::OpenerExt;
@@ -393,4 +394,106 @@ pub fn import_instance_from_bytes(app: AppHandle, zip_bytes: Vec<u8>) -> AppResu
     spawn_install(&app, instance.id, instance.mc_version.clone(), instance.loader.clone());
 
     Ok(instance)
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WorldInfo {
+    folder_name: String,
+    size_bytes: u64,
+    last_played: Option<chrono::DateTime<chrono::Utc>>,
+    has_icon: bool,
+}
+
+fn dir_size(path: &Path) -> u64 {
+    let Ok(entries) = std::fs::read_dir(path) else { return 0 };
+    entries
+        .flatten()
+        .map(|entry| {
+            let entry_path = entry.path();
+            if entry_path.is_dir() {
+                dir_size(&entry_path)
+            } else {
+                entry.metadata().map(|m| m.len()).unwrap_or(0)
+            }
+        })
+        .sum()
+}
+
+/// Lista os mundos salvos (`saves/<pasta>/`) de uma instância — cada
+/// pasta de save vira uma entrada, mais recente primeiro (data de
+/// modificação do `level.dat`, que o próprio Minecraft reescreve toda
+/// vez que salva o jogo). O nome de exibição é o nome da PASTA — ler o
+/// nome "de verdade" exigiria decodificar NBT binário do `level.dat`
+/// (formato próprio, comprimido em gzip) só pra isso, e a pasta já é o
+/// nome que o jogador escolheu na tela de criar mundo na esmagadora
+/// maioria dos casos.
+#[tauri::command]
+pub fn list_instance_worlds(app: AppHandle, id: Uuid) -> AppResult<Vec<WorldInfo>> {
+    let store = instance_store(&app)?;
+    let saves_dir = store.instance_dir(id).join("saves");
+
+    let mut worlds = Vec::new();
+    let Ok(entries) = std::fs::read_dir(&saves_dir) else { return Ok(worlds) };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let Some(folder_name) = path.file_name().and_then(|n| n.to_str()).map(str::to_string) else { continue };
+        let last_played = std::fs::metadata(path.join("level.dat")).ok().and_then(|m| m.modified().ok()).map(chrono::DateTime::<chrono::Utc>::from);
+        worlds.push(WorldInfo { folder_name, size_bytes: dir_size(&path), last_played, has_icon: path.join("icon.png").exists() });
+    }
+    worlds.sort_by(|a, b| b.last_played.cmp(&a.last_played));
+    Ok(worlds)
+}
+
+fn validate_world_folder_name(folder_name: &str) -> AppResult<()> {
+    if folder_name.is_empty() || folder_name.contains('/') || folder_name.contains('\\') || folder_name.contains("..") {
+        return Err(AppError::InvalidInput("nome de mundo inválido".to_string()).into());
+    }
+    Ok(())
+}
+
+/// Apaga um mundo — sem confirmação nenhuma aqui, a UI que decide
+/// (mesma disciplina de `delete_instance`: irreversível, confirma
+/// antes de chamar isso).
+#[tauri::command]
+pub fn delete_instance_world(app: AppHandle, id: Uuid, folder_name: String) -> AppResult<()> {
+    validate_world_folder_name(&folder_name)?;
+    let store = instance_store(&app)?;
+    let world_dir = store.instance_dir(id).join("saves").join(&folder_name);
+    if !world_dir.exists() {
+        return Err(AppError::NotFound(format!("mundo \"{folder_name}\"")).into());
+    }
+    std::fs::remove_dir_all(&world_dir).map_err(AppError::from)?;
+    Ok(())
+}
+
+/// Abre a pasta de UM mundo específico no explorador — mais direto que
+/// "Abrir pasta" da instância inteira quando o que se quer é olhar/
+/// mexer nos arquivos de um save só.
+#[tauri::command]
+pub fn open_instance_world_folder(app: AppHandle, id: Uuid, folder_name: String) -> AppResult<()> {
+    validate_world_folder_name(&folder_name)?;
+    let store = instance_store(&app)?;
+    let world_dir = store.instance_dir(id).join("saves").join(&folder_name);
+    std::fs::create_dir_all(&world_dir).map_err(AppError::from)?;
+    app.opener().open_path(world_dir.to_string_lossy(), None::<&str>).map_err(|e| AppError::InvalidInput(e.to_string()))?;
+    Ok(())
+}
+
+/// Ícone do mundo (`icon.png`, PNG que o próprio Minecraft grava
+/// quando o jogador tira um) em base64 — mesmo padrão já usado pra
+/// textura de skin/capa (`commands::accounts::get_account_texture`).
+#[tauri::command]
+pub fn get_world_icon(app: AppHandle, id: Uuid, folder_name: String) -> AppResult<Option<String>> {
+    validate_world_folder_name(&folder_name)?;
+    let store = instance_store(&app)?;
+    let icon_path = store.instance_dir(id).join("saves").join(&folder_name).join("icon.png");
+    if !icon_path.exists() {
+        return Ok(None);
+    }
+    let bytes = std::fs::read(&icon_path).map_err(AppError::from)?;
+    Ok(Some(base64::engine::general_purpose::STANDARD.encode(bytes)))
 }

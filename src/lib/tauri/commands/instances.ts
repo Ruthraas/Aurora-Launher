@@ -107,6 +107,29 @@ export function importInstanceFromBytes(zipBytes: number[]): Promise<Instance> {
   return callCommand<Instance>("import_instance_from_bytes", { zipBytes });
 }
 
+export interface WorldInfo {
+  folderName: string;
+  sizeBytes: number;
+  lastPlayed: string | null;
+  hasIcon: boolean;
+}
+
+export function listInstanceWorlds(id: string): Promise<WorldInfo[]> {
+  return callCommand<WorldInfo[]>("list_instance_worlds", { id });
+}
+
+export function deleteInstanceWorld(id: string, folderName: string): Promise<null> {
+  return callCommand<null>("delete_instance_world", { id, folderName });
+}
+
+export function openInstanceWorldFolder(id: string, folderName: string): Promise<null> {
+  return callCommand<null>("open_instance_world_folder", { id, folderName });
+}
+
+export function getWorldIcon(id: string, folderName: string): Promise<string | null> {
+  return callCommand<string | null>("get_world_icon", { id, folderName });
+}
+
 export interface FabricLoaderEntry {
   loader: { version: string; stable: boolean };
 }

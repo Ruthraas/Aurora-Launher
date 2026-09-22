@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Blocks, FileText, LayoutGrid } from "lucide-react";
+import { Blocks, FileText, Globe, LayoutGrid } from "lucide-react";
 import { PlayButton } from "@/components/play-button";
 import { cn } from "@/lib/utils";
 import { useInstances } from "./use-instances";
@@ -9,15 +9,17 @@ import { useLaunchInstance } from "./use-instance-mutations";
 import { OverviewTab } from "./OverviewTab";
 import { ModsTab } from "./ModsTab";
 import { LogsTab } from "./LogsTab";
+import { WorldsTab } from "./WorldsTab";
 import { OptimizeButton } from "./OptimizeButton";
 import { InstanceHeader } from "./InstanceHeader";
 import { useJobEvents } from "@/features/discover/use-job-events";
 
-type Tab = "overview" | "mods" | "logs";
+type Tab = "overview" | "mods" | "worlds" | "logs";
 
 const TABS: { value: Tab; label: string; icon: typeof LayoutGrid }[] = [
   { value: "overview", label: "Visão geral", icon: LayoutGrid },
   { value: "mods", label: "Mods", icon: Blocks },
+  { value: "worlds", label: "Mundos", icon: Globe },
   { value: "logs", label: "Logs", icon: FileText },
 ];
 
@@ -79,6 +81,8 @@ export function InstanceDetailPage() {
           <OverviewTab instance={instance} />
         ) : tab === "mods" ? (
           <ModsTab instance={instance} />
+        ) : tab === "worlds" ? (
+          <WorldsTab instance={instance} />
         ) : (
           <LogsTab instance={instance} />
         )}
