@@ -15,6 +15,24 @@ pub use mods::ModpackOrigin;
 
 const INSTANCE_FILE: &str = "instance.json";
 const SCHEMA_VERSION: u32 = 1;
+const MAX_INSTANCE_NAME_LEN: usize = 60;
+
+/// Diferente do nickname de conta offline (`accounts::offline::validate_nickname`,
+/// restrito a `[a-zA-Z0-9_]` porque vira o nome de usuário real do
+/// Minecraft), o nome de instância é só um rótulo de exibição — a
+/// pasta em disco usa o UUID (`InstanceStore::instance_dir`), não o
+/// nome. Então aqui só barra vazio/espaço-só e tamanho absurdo, sem
+/// restringir caracteres.
+fn validate_instance_name(name: &str) -> Result<(), AppError> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::InvalidInput("nome da instância não pode ser vazio".to_string()));
+    }
+    if trimmed.chars().count() > MAX_INSTANCE_NAME_LEN {
+        return Err(AppError::InvalidInput(format!("nome da instância deve ter no máximo {MAX_INSTANCE_NAME_LEN} caracteres")));
+    }
+    Ok(())
+}
 
 /// Forge clássico cobre MC 1.16-1.20.2 (ver `core::loaders::forge`) —
 /// versões anteriores usam um instalador GUI que patcheava o jar
@@ -169,6 +187,8 @@ impl InstanceStore {
         ram_min_mb: u32,
         ram_max_mb: u32,
     ) -> Result<Instance, AppError> {
+        validate_instance_name(&name)?;
+        let name = name.trim().to_string();
         let instance = Instance {
             schema_version: SCHEMA_VERSION,
             id: Uuid::new_v4(),
@@ -232,6 +252,26 @@ mod tests {
 
     fn temp_store() -> InstanceStore {
         InstanceStore::new(std::env::temp_dir().join(format!("aurora-instances-{}", Uuid::new_v4())))
+    }
+
+    #[test]
+    fn create_rejects_empty_or_blank_name() {
+        let store = temp_store();
+        assert!(store.create("   ".to_string(), "1.21".to_string(), LoaderKind::Vanilla, 1024, 2048).is_err());
+    }
+
+    #[test]
+    fn create_rejects_name_too_long() {
+        let store = temp_store();
+        let long_name = "a".repeat(MAX_INSTANCE_NAME_LEN + 1);
+        assert!(store.create(long_name, "1.21".to_string(), LoaderKind::Vanilla, 1024, 2048).is_err());
+    }
+
+    #[test]
+    fn create_trims_name() {
+        let store = temp_store();
+        let instance = store.create("  Minha Instância  ".to_string(), "1.21".to_string(), LoaderKind::Vanilla, 1024, 2048).unwrap();
+        assert_eq!(instance.name, "Minha Instância");
     }
 
     #[test]

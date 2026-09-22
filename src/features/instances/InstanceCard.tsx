@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { RotateCw, Settings, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlayButton } from "@/components/play-button";
 import { ProgressBar } from "@/components/progress-bar";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import type { Instance } from "@/lib/tauri/commands/instances";
 import { useInstallProgressStore } from "./install-progress-store";
 import { useDeleteInstance, useLaunchInstance, useRetryInstanceInstall } from "./use-instance-mutations";
@@ -14,6 +16,7 @@ export function InstanceCard({ instance }: { instance: Instance }) {
   const deleteInstance = useDeleteInstance();
   const launchInstance = useLaunchInstance();
   const retryInstall = useRetryInstanceInstall();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
@@ -34,12 +37,24 @@ export function InstanceCard({ instance }: { instance: Instance }) {
             variant="ghost"
             size="icon-sm"
             disabled={deleteInstance.isPending}
-            onClick={() => deleteInstance.mutate(instance.id)}
+            onClick={() => setConfirmingDelete(true)}
           >
             <Trash2 size={14} />
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+        title={`Excluir "${instance.name}"?`}
+        description="Apaga a instância inteira — mundos, configurações e mods instalados. Não tem como desfazer."
+        confirmLabel="Excluir"
+        onConfirm={() => {
+          deleteInstance.mutate(instance.id);
+          setConfirmingDelete(false);
+        }}
+      />
 
       {instance.status === "installing" && (
         <div className="mt-3 space-y-1.5">

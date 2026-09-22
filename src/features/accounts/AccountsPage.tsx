@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { UserCircle, Fingerprint, CalendarDays, Users, Shirt, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/page-header";
@@ -5,6 +6,7 @@ import { EmptyState } from "@/components/empty-state";
 import { SectionLabel } from "@/components/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAccounts } from "./use-accounts";
 import { useLogout, useRemoveAccount, useSetActiveAccount } from "./use-account-mutations";
 import { AddOfflineForm } from "./AddOfflineForm";
@@ -82,6 +84,8 @@ export function AccountsPage() {
   const setActiveAccount = useSetActiveAccount();
   const logout = useLogout();
   const pending = removeAccount.isPending || setActiveAccount.isPending;
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
+  const confirmingRemoveAccount = data?.accounts.find((a) => a.id === confirmingRemoveId);
 
   const activeAccount = data?.accounts.find((a) => a.id === data.activeAccountId);
   const otherAccounts = data?.accounts.filter((a) => a.id !== data.activeAccountId) ?? [];
@@ -137,7 +141,7 @@ export function AccountsPage() {
                         <Button variant="outline" size="sm" disabled={pending} onClick={() => setActiveAccount.mutate(account.id)}>
                           Usar
                         </Button>
-                        <Button variant="ghost" size="sm" disabled={pending} onClick={() => removeAccount.mutate(account.id)}>
+                        <Button variant="ghost" size="sm" disabled={pending} onClick={() => setConfirmingRemoveId(account.id)}>
                           Remover
                         </Button>
                       </div>
@@ -154,6 +158,18 @@ export function AccountsPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmingRemoveAccount)}
+        onOpenChange={(next) => !next && setConfirmingRemoveId(null)}
+        title={`Remover "${confirmingRemoveAccount?.username}"?`}
+        description="A conta some da lista — pra usar de novo é só recriar com o mesmo nome (offline não guarda senha)."
+        confirmLabel="Remover"
+        onConfirm={() => {
+          if (confirmingRemoveAccount) removeAccount.mutate(confirmingRemoveAccount.id);
+          setConfirmingRemoveId(null);
+        }}
+      />
     </div>
   );
 }
