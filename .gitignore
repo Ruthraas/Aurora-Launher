@@ -1,0 +1,37 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Rust / Tauri
+src-tauri/target
+src-tauri/gen
+
+# Nunca comitar chaves/segredos que o app grava em disco em runtime
+# (ex.: chave da API do CurseForge fica em settings.json local, não
+# no repositório — ver core/settings.rs).
+*.env
+.env.*
+
+.claude/
+

@@ -1,0 +1,211 @@
+# CONTEXTO
+
+Projeto: **Aurora Launcher by ATS**, launcher de Minecraft Java (Tauri 2 + Rust no backend, React + TypeScript + Vite + Tailwind + shadcn/ui no front). Já existem, ou serão criados, os módulos: instâncias, downloads paralelos com SHA1, loaders (Fabric/Quilt/Forge/NeoForge) e provedores Modrinth/CurseForge (atrás de uma trait `ModSource`). Antes de codar, leia o repositório e o CLAUDE.md e reaproveite o que já existe. Não recrie o que já está pronto.
+
+Esta tarefa tem 3 partes: **(A)** novo visual, **(B)** fluxo "Adicionar mod" na tela Descobrir, **(C)** fluxo "Baixar modpack" na tela Descobrir.
+
+# PARTE A: IDENTIDADE VISUAL (profissional, minimalista, responsivo)
+
+Troque a paleta atual. Objetivo: aparência de produto profissional, calma e agradável, sem gradiente chamativo.
+
+Tokens (CSS variables no tema, expostos ao Tailwind):
+```
+--bg:        #0d1117   /* fundo da janela */
+--surface:   #141a23   /* painéis, sidebar */
+--surface-2: #1a2230   /* hover, inputs, itens selecionados */
+--border:    #232d3b   /* 1px, sempre fina */
+--text:      #e7ecf3
+--muted:     #8d99ab
+--accent:    #2dd4bf   /* única cor de destaque (teal aurora) */
+--accent-fg: #06201c   /* texto sobre o accent */
+--danger:    #f87171
+--warning:   #fbbf24
+```
+Regras:
+- Minimalista: superfícies chapadas, bordas de **1px** com `--border`, cantos 10-14px, sombras quase inexistentes.
+- O accent aparece só em: botão primário, foco, item ativo da navegação e barras de progresso. Gradiente permitido apenas nas barras de progresso (accent → `#818cf8`).
+- Fontes: Sora (títulos) + DM Sans (texto).
+- Contraste mínimo WCAG AA. Alvos de clique ≥ 44px. `:focus-visible` sempre visível.
+- **Responsivo** por largura da janela: ≥900px sidebar de ícones à esquerda e grid auto-fill; 640-900px margens menores e layouts de 2 colunas viram 1; <640px sidebar vira barra inferior, listas em coluna única, modais viram bottom sheet em tela cheia.
+- Sem hex hardcoded nos componentes: use só os tokens.
+
+# PARTE B: DESCOBRIR > ADICIONAR MOD
+
+Em cada resultado de **mod** (Modrinth/CurseForge unificados), botão **"Adicionar"**. Ao clicar, abre um **modal** (shadcn Dialog) com o título "Adicionar {mod} a uma instância".
+
+**Conteúdo do modal:** lista de todas as instâncias do usuário. Para cada uma, o backend calcula um status:
+
+1. **Compatível**: o loader da instância é suportado por alguma versão do mod **e** essa versão suporta a versão do Minecraft da instância. Linha normal, com checkbox. Mostrar a versão do mod que será instalada (ex.: "v0.6.2").
+2. **Já instalado**: o mod (mesmo projeto) já existe na instância. Linha **esmaecida** (opacity ~0.45), **sem checkbox**, `aria-disabled="true"`, não clicável, com o texto "Já instalado" + versão atual. Nunca dá para selecionar.
+3. **Incompatível**: loader ou versão do jogo não suportados. Ficam num grupo recolhido "Incompatíveis (n)", esmaecidas, não selecionáveis, com o motivo ("Requer Fabric", "Sem versão para 1.20.1").
+
+Comportamento:
+- Seleção **múltipla** entre as compatíveis. Se houver só **uma** compatível, ela já vem marcada.
+- Botão primário do rodapé: "Adicionar a {n} instância(s)", desabilitado com 0 selecionadas.
+- **Dependências obrigatórias**: resolver e mostrar "Também será instalado: X, Y" (pular as que já existem na instância). Dependências opcionais só listadas, nunca instaladas sozinhas. Dependência incompatível bloqueia aquela instância, com motivo.
+- Se **nenhuma** instância for compatível: estado vazio com o botão "Criar instância compatível", que abre o fluxo de nova instância já preenchido com o loader e a versão do jogo mais recente suportados pelo mod.
+- Estados de loading (skeleton), erro (com "Tentar de novo") e sucesso (toast + a linha passa a "Já instalado").
+- Acessibilidade: focus trap, Esc fecha, foco volta ao botão que abriu, navegação por teclado, `aria-live` para o resultado.
+
+**Detecção de "já instalado"** (regra de negócio importante):
+- Cada instância mantém um arquivo de estado `mods.lock.json` com, por mod: `source`, `project_id`, `version_id`, `file_name`, `sha1`, `installed_at`, `explicit: bool` (se veio de escolha do usuário ou de dependência).
+- Comparar por `(source, project_id)`. Como o mesmo mod pode existir no Modrinth e no CurseForge com IDs diferentes, usar **fallback por SHA1 do arquivo** e, em último caso, por nome de arquivo normalizado.
+- Mods colocados manualmente na pasta `mods/` também devem ser reconhecidos por SHA1 (consultar o endpoint de busca por hash do Modrinth e cachear).
+- Fora de escopo agora: atualização de versão de mod já instalado (deixar a interface preparada, sem implementar).
+
+# PARTE C: DESCOBRIR > BAIXAR MODPACK
+
+Em cada resultado de **modpack**, botão **"Baixar"** (ícone de download). Ao clicar, abre um modal/drawer de confirmação com:
+- Nome da instância (campo editável; padrão = nome do modpack; se já existir uma instância com esse nome, sugerir "Nome (2)").
+- Seletor da versão do modpack (padrão = última estável).
+- Resumo somente leitura: versão do Minecraft, loader + versão do loader, quantidade de mods, tamanho estimado do download, RAM sugerida.
+- Botão primário "Baixar e criar instância".
+
+Ao confirmar, o launcher **cria a instância imediatamente** (aparece em Instâncias com estado "Instalando" e barra de progresso) e executa um job em background, **cancelável**:
+1. Buscar os metadados da versão do modpack.
+2. Criar a instância com o nome escolhido e o ícone do modpack. Guardar a **origem** (`modpack_source`, `project_id`, `version_id`) para futuras atualizações.
+3. Instalar a versão do Minecraft e o Java necessários (usa o cache global).
+4. Instalar o loader exatamente na versão que o pack pede.
+5. Baixar todos os arquivos em paralelo, com verificação de hash, retry e escrita atômica.
+6. Extrair `overrides/` (e `client-overrides/` no caso do .mrpack) **com proteção contra zip-slip**.
+7. Gerar o `mods.lock.json` da instância.
+8. Finalizar: estado "Pronta".
+
+Formatos (**verifique a documentação oficial antes de implementar, não assuma campos**):
+- **Modrinth `.mrpack`**: `modrinth.index.json` (dependências de minecraft e loader, arquivos com hashes e URLs, `env`), pasta `overrides/`.
+- **CurseForge**: `manifest.json` (versão do Minecraft, `modLoaders`, lista de `projectID`/`fileID`), pasta `overrides/`. Mods com `downloadUrl: null` não podem ser baixados automaticamente: **não falhar o job**. Concluir o resto, marcar a instância como "Incompleta" e mostrar uma lista "Baixe manualmente" com o link de cada mod. Depois que o usuário colocar o arquivo, revalidar.
+- Chave de API do CurseForge **só via proxy**, nunca no binário.
+
+Falhas: em erro fatal, oferecer "Tentar de novo" (retomando o que já foi baixado) ou "Remover instância", sem deixar pasta pela metade. Nunca `unwrap()` em caminho de produção.
+
+# BACKEND (Rust): contratos sugeridos
+
+```rust
+enum InstanceCompat {
+    Compatible { mod_version: String, deps_to_install: Vec<ModRef> },
+    AlreadyInstalled { installed_version: String },
+    Incompatible { reason: String },
+}
+
+// Tauri commands (finos, tipados; a lógica fica em core/)
+get_mod_compatibility(project: ProjectRef) -> Vec<(InstanceId, InstanceCompat)>
+install_mod(project: ProjectRef, instance_ids: Vec<InstanceId>) -> JobId
+get_modpack_preview(project: ProjectRef, version: Option<VersionId>) -> ModpackPreview
+install_modpack(project: ProjectRef, version_id: VersionId, name: String) -> JobId
+cancel_job(job_id: JobId)
+```
+Progresso por eventos Tauri (`job://progress` com `{job_id, phase, done, total}`). O front nunca faz HTTP para os provedores: tudo passa pelo Rust.
+
+# REQUISITOS DE QUALIDADE
+
+- Testes unitários (sem rede) para: cálculo de `InstanceCompat` (loader/versão/já instalado), resolução de dependências, parsing de `.mrpack` e `manifest.json` com fixtures, proteção zip-slip, geração de nome único de instância.
+- Tipos compartilhados front/back (ex.: `specta` ou `ts-rs`) para evitar divergência.
+- Mensagens de erro em PT-BR úteis ao usuário; logs técnicos com `tracing`.
+- i18n desde já (PT-BR e EN).
+
+# COMO TRABALHAR
+
+1. **Não escreva código ainda.** Primeiro, leia o repositório e responda com: o que já existe e será reaproveitado, o plano em passos pequenos com critério de aceite, e riscos/dúvidas (máximo 5, objetivas).
+2. Depois de eu aprovar, implemente na ordem: **A** (tema e responsividade) → **B** (modal de mods, com `mods.lock.json`) → **C** (modpacks).
+3. Um passo por vez, com commits pequenos, e rode lint, typecheck e testes ao fim de cada passo.
+4. Se um formato de API ou de arquivo for incerto, diga e aponte onde verificar, em vez de inventar.
+
+
+
+TAREFA: aplicar o novo design e implementar a lógica de Descobrir
+
+O Aurora Launcher by ATS já existe e funciona. Esta tarefa não é reconstruir nada. São três frentes:
+
+A. Aplicar o novo design (paleta, tipografia, responsividade, logo) na interface existente.
+B. Lógica de adicionar mod a uma ou mais instâncias, com o modal de escolha de instância.
+C. Lógica de baixar modpack e criar a instância automaticamente.
+
+Descubra a stack, a estrutura e as convenções olhando o repositório. Siga o que já existe: não troque de biblioteca, de gerenciador de estado nem de estrutura de pastas sem um motivo forte, e diga qual é antes de mudar. Reaproveite módulos que já existem (provedores Modrinth/CurseForge, modelo de instância, gerenciador de downloads, cliente dos comandos) e crie só o que faltar.
+
+Referência de design (obrigatória)
+
+Leia antes de mexer na interface:
+
+docs/design/DESIGN.md: tokens, tipografia, responsividade, componentes, telas e os fluxos das partes B e C.
+docs/design/screens/: capturas do design aprovado.
+docs/design/logo/: logo em SVG.
+
+Os nomes, versões, números e tamanhos das capturas são dados de exemplo. Nunca os fixe no código.
+
+Parte A: aplicar o design
+Faça um inventário da interface atual: como o estilo é organizado (Tailwind, CSS modules, tema, componentes de UI) e quais telas existem.
+Implemente os tokens do DESIGN.md como CSS variables e exponha ao sistema de estilo que o projeto já usa. Sem hex hardcoded nos componentes.
+Migre tela por tela, na ordem: shell (sidebar + barra inferior no celular), Início, Instâncias, Descobrir, Contas, tela da instância. Mantenha o comportamento existente. Só o visual muda.
+Responsivo por largura da janela (regras no DESIGN.md, seção 3): sidebar de ícones em janelas largas, barra inferior abaixo de 640px, modais como bottom sheet no celular.
+Troque o logo e o ícone do app pelos SVGs em docs/design/logo/ (gerar os ícones do Tauri a partir do aurora-app-icon.svg, se o app usar Tauri).
+Ao terminar cada tela, compare com a captura e liste o que ainda difere.
+Parte B: adicionar mod (Descobrir)
+
+Aparência e comportamento do modal estão no DESIGN.md, seção 6. Regras de negócio:
+
+O backend calcula, para cada instância, um status:
+
+rust
+enum InstanceCompat {
+    Compatible { mod_version: String, deps_to_install: Vec<ModRef> },
+    AlreadyInstalled { installed_version: String },
+    Incompatible { reason: String },
+}
+Compatível: o loader da instância é suportado por alguma versão do mod e essa versão suporta a versão do Minecraft da instância.
+Já instalado: o mesmo projeto já existe na instância. Na interface fica esmaecido e nunca selecionável.
+Incompatível: loader ou versão do jogo não suportados, com o motivo em texto.
+Dependências obrigatórias: resolver e exibir, pulando as que já existem na instância. Dependências opcionais só são listadas, nunca instaladas sozinhas. Dependência incompatível bloqueia aquela instância, com motivo.
+
+Detecção de "já instalado"
+
+Cada instância mantém um mods.lock.json com, por mod: source, project_id, version_id, file_name, sha1, installed_at, explicit: bool (escolhido pelo usuário ou vindo de dependência). Se a instância já tiver algum registro equivalente, reaproveite em vez de criar um segundo.
+Comparar por (source, project_id). O mesmo mod pode ter IDs diferentes no Modrinth e no CurseForge, então use fallback por SHA1 do arquivo e, por último, por nome de arquivo normalizado.
+Mods colocados manualmente em mods/ também devem ser reconhecidos por SHA1 (consultar a busca por hash do Modrinth e cachear o resultado).
+Fora de escopo agora: atualizar a versão de um mod já instalado. Deixe a interface preparada, sem implementar.
+Parte C: baixar modpack
+
+Aparência do modal no DESIGN.md, seção 7. Ao confirmar, o launcher cria a instância imediatamente (estado "Instalando", com barra de progresso) e roda um job em segundo plano, cancelável:
+
+Buscar os metadados da versão do modpack.
+Criar a instância com o nome escolhido (padrão: nome do modpack; se já existir, sugerir "Nome (2)") e o ícone do modpack. Guardar a origem (modpack_source, project_id, version_id) para futuras atualizações.
+Instalar a versão do Minecraft e o Java necessários, reutilizando o que o launcher já faz para criar instâncias.
+Instalar o loader exatamente na versão que o pack pede.
+Baixar todos os arquivos em paralelo, com verificação de hash, retry e escrita atômica (reaproveite o gerenciador de downloads existente).
+Extrair overrides/ (e client-overrides/ no .mrpack) com proteção contra zip-slip.
+Gerar o mods.lock.json.
+Finalizar: estado "Pronta".
+
+Formatos (verifique a documentação oficial antes de implementar, não assuma campos):
+
+Modrinth .mrpack: modrinth.index.json (dependências de Minecraft e loader, arquivos com hashes e URLs, env) e pasta overrides/.
+CurseForge: manifest.json (versão do Minecraft, modLoaders, lista de projectID/fileID) e overrides/. Mods com downloadUrl: null: não falhar o job. Concluir o resto, marcar a instância como "Incompleta" e mostrar a lista "Baixe manualmente" com o link de cada mod. Depois que o usuário colocar o arquivo, revalidar.
+A chave de API do CurseForge continua só via proxy, nunca no binário.
+
+Falhas: em erro fatal, oferecer "Tentar de novo" (retomando o que já foi baixado) ou "Remover instância", sem deixar pasta pela metade.
+
+Contratos do backend (sugeridos, adapte aos nomes e padrões que já existem)
+rust
+get_mod_compatibility(project: ProjectRef) -> Vec<(InstanceId, InstanceCompat)>
+install_mod(project: ProjectRef, instance_ids: Vec<InstanceId>) -> JobId
+get_modpack_preview(project: ProjectRef, version: Option<VersionId>) -> ModpackPreview
+install_modpack(project: ProjectRef, version_id: VersionId, name: String) -> JobId
+cancel_job(job_id: JobId)
+
+Progresso por eventos (job://progress com {job_id, phase, done, total}). O front nunca faz HTTP para os provedores: tudo passa pelo backend. Se já existir um sistema de jobs ou de progresso, use-o.
+
+Requisitos de qualidade
+Nenhuma operação longa bloqueia a UI. Todo download mostra progresso e pode ser cancelado.
+Mensagens de erro em PT-BR úteis ao usuário, com logs técnicos separados. Sem unwrap() em caminho de produção.
+Acessibilidade dos modais: foco preso, Esc fecha, foco volta ao botão que abriu, aria-live para o resultado.
+Textos novos com i18n (PT-BR e EN), seguindo o sistema que o projeto já usa.
+Testes unitários, sem rede, para: cálculo de InstanceCompat, resolução de dependências, detecção de "já instalado" (por ID, por SHA1 e por nome), parsing de .mrpack e manifest.json (com fixtures), proteção zip-slip e geração de nome único de instância.
+Fora de escopo
+Reescrever telas ou módulos que já funcionam, além do necessário para o novo visual.
+Autenticação, versões do Minecraft, loaders e o restante do núcleo do launcher.
+Embutir chaves de API no binário.
+Como trabalhar
+Antes de codar, leia o repositório e o docs/design/ e responda com: (a) o que já existe para cada frente (sistema de estilo, tela Descobrir, provedores, modelo de instância, downloads e jobs, leitura da pasta mods/); (b) o que falta; (c) o plano em passos pequenos com critério de aceite; (d) riscos e, no máximo, 5 dúvidas objetivas. Não escreva código ainda.
+Depois de eu aprovar, faça na ordem A → B → C, com commits pequenos. Rode lint, typecheck e testes ao fim de cada passo.
+Não invente APIs, campos ou endpoints. Se um formato for incerto, diga e indique onde verificar.
+Explique em 1-2 linhas o porquê de decisões não óbvias e sinalize dívida técnica ao identificá-la.
+Mostre só os trechos relevantes ao editar arquivos existentes.

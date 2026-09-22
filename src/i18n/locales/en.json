@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "home": "Home",
+    "instances": "Instances",
+    "discover": "Discover",
+    "accounts": "Accounts",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "Welcome to Aurora Launcher",
+    "subtitle": "by Aurora Technology Society (ATS)",
+    "disclaimer": "Aurora Launcher is not affiliated with, endorsed by, or associated with Mojang Studios or Microsoft."
+  },
+  "instances": {
+    "emptyTitle": "No instances yet",
+    "emptyDescription": "Create your first instance to start playing."
+  },
+  "discover": {
+    "emptyTitle": "Discover coming soon",
+    "emptyDescription": "Mod and modpack search arrives in a future phase."
+  },
+  "accounts": {
+    "emptyTitle": "No accounts added",
+    "emptyDescription": "Add an offline account to play."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "about": "About"
+  }
+}
