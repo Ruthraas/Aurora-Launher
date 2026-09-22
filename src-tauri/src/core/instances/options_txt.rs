@@ -5,24 +5,39 @@ use crate::error::AppError;
 /// Chaves do `options.txt` que mexem direto em FPS, com os valores
 /// que a comunidade usa como padrão de "máxima performance" — nada
 /// exótico, é o mesmo conjunto que qualquer guia de otimização manual
-/// recomenda (baixar render/simulation distance, cortar partículas,
-/// desligar AO/sombra de entidade/VSync/nuvens, gráficos "fast").
-/// Só essas chaves são tocadas; idioma, resolução, keybinds e tudo
-/// mais que o jogador (ou o autor do modpack, via `overrides/`) já
-/// tenha configurado fica como está. O parser do próprio Minecraft
-/// ignora silenciosamente chave desconhecida ou fora da versão atual
-/// (não é erro fatal), então é seguro aplicar o mesmo preset em
-/// qualquer versão do jogo sem checar qual delas é.
+/// recomenda. Cada chave abaixo foi conferida contra `options.txt`
+/// reais de modpacks publicados (via busca de código no GitHub) —
+/// nenhuma foi inventada. Só essas chaves são tocadas; idioma,
+/// resolução, keybinds e tudo mais que o jogador (ou o autor do
+/// modpack, via `overrides/`) já tenha configurado fica como está. O
+/// parser do próprio Minecraft ignora silenciosamente chave
+/// desconhecida ou fora da versão atual (não é erro fatal), então é
+/// seguro aplicar o mesmo preset em qualquer versão do jogo sem
+/// checar qual delas é — inclusive as chaves só de versões antigas
+/// (`fancyGraphics`, `fboEnable`, `useVbo`, pré-1.13) e as só de
+/// versões modernas (`graphicsMode`, `simulationDistance`) convivem
+/// no mesmo arquivo sem problema.
+///
+/// IMPORTANTE sobre névoa ("fog"): o `options.txt` vanilla nunca teve
+/// uma chave pra desligar névoa — ela é renderizada com base na borda
+/// do `renderDistance`, sem toggle. O Sodium também removeu a opção
+/// de vídeo "Fog: Off" das versões atuais. Por isso "tirar o fog" é
+/// feito por um mod dedicado (`core::optimization::NO_FOG`), não
+/// tem como ser só uma chave de config.
 const PERFORMANCE_KEYS: &[(&str, &str)] = &[
     ("renderDistance", "8"),
     ("simulationDistance", "8"),
+    // reduz a distância em que ENTIDADES (mobs, itens no chão,
+    // minecarts) renderizam sem mexer no terreno — corta bastante FPS
+    // gasto em fazendas de mobs e servidores cheios de gente, chave
+    // real confirmada em `options.txt` publicados.
+    ("entityDistanceScaling", "0.5"),
     ("particles", "2"),
     ("ao", "0"),
     ("entityShadows", "false"),
     ("enableVsync", "false"),
     ("graphicsMode", "0"),
     ("fancyGraphics", "false"),
-    ("clouds", "false"),
     ("renderClouds", "false"),
     ("biomeBlendRadius", "0"),
     ("mipmapLevels", "0"),

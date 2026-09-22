@@ -62,6 +62,18 @@ const EMBEDDIUM: OptimizationMod = OptimizationMod {
     name: "Embeddium",
     description: "Motor de renderização moderno (família Sodium) para Forge/NeoForge.",
 };
+// O Sodium removeu a opção de vídeo "Fog: Off" das versões atuais
+// (confirmado contra `sodium-options.json` reais de modpacks — o
+// schema moderno só tem `use_fog_occlusion`, uma otimização interna,
+// não um controle visual) e o `options.txt` vanilla nunca teve uma
+// chave pra desligar névoa. Esse mod client-side dedicado (1.28M+
+// downloads, confirmado via API do Modrinth) é o jeito real de
+// cumprir "tirar o fog por padrão" — não dá pra fazer só com config.
+const NO_FOG: OptimizationMod = OptimizationMod {
+    project_id: "QSzy55SB", // slug: no_fog
+    name: "No Fog",
+    description: "Remove a névoa de distância, água, lava e nether — visibilidade total.",
+};
 
 /// Lista curada por família de loader — Fabric e Forge/NeoForge têm
 /// ecossistemas de otimização DIFERENTES (mods de um não rodam no
@@ -75,15 +87,17 @@ pub fn recommended_for(loader: &LoaderKind) -> &'static [OptimizationMod] {
     match loader {
         LoaderKind::Vanilla => &[],
         LoaderKind::Fabric { .. } | LoaderKind::Quilt { .. } => {
-            &[SODIUM, LITHIUM, FERRITE_CORE, KRYPTON, IMMEDIATELY_FAST, ENTITY_CULLING, MODERN_FIX]
+            &[SODIUM, LITHIUM, FERRITE_CORE, KRYPTON, IMMEDIATELY_FAST, ENTITY_CULLING, MODERN_FIX, NO_FOG]
         }
         // NeoForge moderno já recebe builds nativas do Sodium — não
         // precisa do Embeddium (evita dois renderizadores concorrentes
         // instalados juntos).
-        LoaderKind::NeoForge { .. } => &[SODIUM, LITHIUM, FERRITE_CORE, IMMEDIATELY_FAST, ENTITY_CULLING, MODERN_FIX],
+        LoaderKind::NeoForge { .. } => {
+            &[SODIUM, LITHIUM, FERRITE_CORE, IMMEDIATELY_FAST, ENTITY_CULLING, MODERN_FIX, NO_FOG]
+        }
         // Forge clássico não tem build do Sodium — Embeddium é o
         // substituto da família Sodium pra essa base.
-        LoaderKind::Forge { .. } => &[EMBEDDIUM, FERRITE_CORE, ENTITY_CULLING, MODERN_FIX],
+        LoaderKind::Forge { .. } => &[EMBEDDIUM, FERRITE_CORE, ENTITY_CULLING, MODERN_FIX, NO_FOG],
     }
 }
 

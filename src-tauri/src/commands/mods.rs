@@ -195,8 +195,29 @@ async fn run_install_optimizations(
     let instance_dir = store.instance_dir(instance_id);
     let cf_api_key = SettingsStore::new(app)?.read()?.curseforge_api_key;
 
+    install_optimization_project_ids(app, handle, &instance, &instance_dir, cf_api_key.as_deref(), project_ids).await?;
+    apply_options_preset(app, handle, &instance_dir)?;
+
     let total = project_ids.len();
-    emit_progress(app, handle.id, JobPhase::FetchingMetadata, 0, total);
+    emit_progress(app, handle.id, JobPhase::Finished, total, total);
+    Ok(())
+}
+
+/// Núcleo compartilhado entre "Instalar mods selecionados" (lista vem
+/// do front, usuário escolheu no checklist) e "Otimizar" (lista vem
+/// de uma varredura automática do catálogo inteiro, ver
+/// `run_optimize_instance`) — mesma lógica de instalação, só muda de
+/// onde vem `project_ids`.
+async fn install_optimization_project_ids(
+    app: &AppHandle,
+    handle: &crate::core::jobs::JobHandle,
+    instance: &crate::core::instances::Instance,
+    instance_dir: &std::path::Path,
+    cf_api_key: Option<&str>,
+    project_ids: &[String],
+) -> Result<(), AppError> {
+    let total = project_ids.len();
+    emit_progress(app, handle.id, JobPhase::FetchingMetadata, 0, total.max(1));
 
     for (i, project_id) in project_ids.iter().enumerate() {
         if handle.is_cancelled() {
@@ -215,23 +236,75 @@ async fn run_install_optimizations(
             title,
             icon_url: None,
         };
-        let compat = mods_compat::compute_compatibility(&instance, &instance_dir, &project, cf_api_key.as_deref()).await?;
+        let compat = mods_compat::compute_compatibility(instance, instance_dir, &project, cf_api_key).await?;
         if let InstanceCompat::Compatible { mod_ref, deps_to_install } = compat {
-            install_with_deps(&instance_dir, &mod_ref, &deps_to_install).await?;
+            install_with_deps(instance_dir, &mod_ref, &deps_to_install).await?;
         }
 
         emit_progress(app, handle.id, JobPhase::Downloading, i + 1, total);
     }
 
-    emit_progress(app, handle.id, JobPhase::ConfiguringOptions, 0, 1);
-    // Clicar em "Otimizar desempenho" numa instância já existente
-    // também aplica o preset de options.txt — não só instâncias
-    // novas ficam com o ajuste (pedido explícito do usuário: "ter em
-    // todos").
-    options_txt::apply(&instance_dir)?;
-    emit_progress(app, handle.id, JobPhase::ConfiguringOptions, 1, 1);
+    Ok(())
+}
 
-    emit_progress(app, handle.id, JobPhase::Finished, total, total);
+fn apply_options_preset(app: &AppHandle, handle: &crate::core::jobs::JobHandle, instance_dir: &std::path::Path) -> Result<(), AppError> {
+    emit_progress(app, handle.id, JobPhase::ConfiguringOptions, 0, 1);
+    options_txt::apply(instance_dir)?;
+    emit_progress(app, handle.id, JobPhase::ConfiguringOptions, 1, 1);
+    Ok(())
+}
+
+/// "OTIMIZAR" — varredura geral: recalcula a compatibilidade do
+/// catálogo INTEIRO agora (não confia em nada que o front tenha
+/// mostrado antes, pode estar desatualizado) e instala tudo que for
+/// compatível e ainda não estiver instalado, numa tacada só, sem o
+/// usuário precisar abrir o checklist e marcar item por item. Aplica
+/// o preset de `options.txt` no final, igual o fluxo manual.
+#[tauri::command]
+pub async fn optimize_instance(app: AppHandle, registry: State<'_, JobRegistry>, instance_id: Uuid) -> AppResult<Uuid> {
+    let handle = registry.start();
+    let job_id = handle.id;
+    let registry_task = registry.inner().clone();
+    let app_task = app.clone();
+
+    tauri::async_runtime::spawn(async move {
+        let result = run_optimize_instance(&app_task, &handle, instance_id).await;
+        if let Err(error) = result {
+            emit_failed(&app_task, job_id, error.to_string());
+        }
+        registry_task.finish(job_id);
+    });
+
+    Ok(job_id)
+}
+
+async fn run_optimize_instance(app: &AppHandle, handle: &crate::core::jobs::JobHandle, instance_id: Uuid) -> Result<(), AppError> {
+    let store = instance_store(app)?;
+    let instance = store.get(instance_id)?;
+    let instance_dir = store.instance_dir(instance_id);
+    let cf_api_key = SettingsStore::new(app)?.read()?.curseforge_api_key;
+
+    emit_progress(app, handle.id, JobPhase::FetchingMetadata, 0, 1);
+
+    let mut to_install = Vec::new();
+    for info in optimization::recommended_for(&instance.loader) {
+        let project = ProjectRef {
+            source: ModSource::Modrinth,
+            project_id: info.project_id.to_string(),
+            content_type: mods_compat::ContentType::Mod,
+            title: Some(info.name.to_string()),
+            icon_url: None,
+        };
+        let compat = mods_compat::compute_compatibility(&instance, &instance_dir, &project, cf_api_key.as_deref()).await?;
+        if let InstanceCompat::Compatible { .. } = compat {
+            to_install.push(info.project_id.to_string());
+        }
+    }
+
+    install_optimization_project_ids(app, handle, &instance, &instance_dir, cf_api_key.as_deref(), &to_install).await?;
+    apply_options_preset(app, handle, &instance_dir)?;
+
+    emit_progress(app, handle.id, JobPhase::Finished, 1, 1);
     Ok(())
 }
 

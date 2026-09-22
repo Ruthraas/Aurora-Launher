@@ -1,20 +1,27 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
-import { PageHeader } from "@/components/page-header";
+import { Blocks, LayoutGrid } from "lucide-react";
 import { PlayButton } from "@/components/play-button";
 import { cn } from "@/lib/utils";
 import { useInstances } from "./use-instances";
 import { useInstallEvents } from "./use-install-events";
 import { useLaunchInstance } from "./use-instance-mutations";
-import { loaderLabel } from "./loader-label";
 import { OverviewTab } from "./OverviewTab";
 import { ModsTab } from "./ModsTab";
+import { OptimizeButton } from "./OptimizeButton";
+import { InstanceHeader } from "./InstanceHeader";
+import { useJobEvents } from "@/features/discover/use-job-events";
 
 type Tab = "overview" | "mods";
 
+const TABS: { value: Tab; label: string; icon: typeof LayoutGrid }[] = [
+  { value: "overview", label: "Visão geral", icon: LayoutGrid },
+  { value: "mods", label: "Mods", icon: Blocks },
+];
+
 export function InstanceDetailPage() {
   useInstallEvents();
+  useJobEvents();
   const { id } = useParams<{ id: string }>();
   const { data: instances, isLoading } = useInstances();
   const launchInstance = useLaunchInstance();
@@ -36,37 +43,31 @@ export function InstanceDetailPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader
-        title={
-          <span className="flex items-center gap-2">
-            <Link to="/instances" className="text-muted-foreground hover:text-foreground">
-              <ChevronLeft size={18} />
-            </Link>
-            {instance.name}
-          </span>
-        }
-        subtitle={`${instance.mcVersion} · ${loaderLabel(instance.loader)}`}
-        actions={
-          instance.status === "ready" || instance.status === "incomplete" ? (
+      <div className="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
+        <InstanceHeader instance={instance} />
+        {(instance.status === "ready" || instance.status === "incomplete") && (
+          <div className="flex shrink-0 items-center gap-2">
+            <OptimizeButton instanceId={instance.id} />
             <PlayButton disabled={launchInstance.isPending} onClick={() => launchInstance.mutate(instance.id)}>
               {launchInstance.isPending ? "Abrindo…" : "Jogar"}
             </PlayButton>
-          ) : undefined
-        }
-      />
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-5 border-b border-border px-6">
-        {(["overview", "mods"] as Tab[]).map((value) => (
+        {TABS.map(({ value, label, icon: Icon }) => (
           <button
             key={value}
             type="button"
             onClick={() => setTab(value)}
             className={cn(
-              "cursor-pointer border-b-2 py-2.5 text-sm font-medium transition-colors",
+              "flex cursor-pointer items-center gap-1.5 border-b-2 py-2.5 text-sm font-medium transition-colors",
               tab === value ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
-            {value === "overview" ? "Visão geral" : "Mods"}
+            <Icon size={14} />
+            {label}
           </button>
         ))}
       </div>

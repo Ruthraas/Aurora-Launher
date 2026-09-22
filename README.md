@@ -280,6 +280,55 @@ Ambos, filtro de loader, seletor de layout Lista/Grade/Grade compacta) — pedid
 ("tem que aparecer a lista igual ao CurseForge... e as opções de Modrinth/CurseForge") resolvido reaproveitando
 o mesmo componente em vez de duas telas de busca divergentes.
 
+## Otimização profissional + redesign da tela de instância (2026-09-21)
+
+Pedido do usuário: melhorar o `options.txt` com mais técnicas reais de FPS, tirar
+fog por padrão, criar um botão "OTIMIZAR" de varredura completa na tela de
+instância, e deixar o design dessa tela mais parecido com o app oficial do
+Modrinth. Além disso: corrigido um 404 real do Forge em modpacks (URL do
+instalador sem a versão do Minecraft — ver seção anterior).
+
+**`options.txt` — preset ampliado e verificado.** Toda chave nova foi conferida
+contra `options.txt` reais publicados em modpacks (busca de código no GitHub),
+nenhuma foi inventada. Adicionado `entityDistanceScaling:0.5` (corta a distância
+de renderização de ENTIDADES — mobs, itens no chão — sem mexer no terreno; ganho
+de FPS real em fazendas/servidores cheios). Removida a chave `clouds` que eu
+tinha colocado numa rodada anterior — não existe no formato real, só `renderClouds`
+existe; ficava lá sem efeito nenhum (o parser do Minecraft ignora chave
+desconhecida silenciosamente, então não quebrava nada, mas não fazia nada
+também).
+
+**Sobre "tirar o fog": não é uma chave de config.** O `options.txt` vanilla nunca
+teve um toggle de névoa — ela é renderizada com base na borda do `renderDistance`,
+sem opção de desligar. O Sodium também **removeu** a opção de vídeo "Fog: Off"
+das versões atuais (confirmado contra `sodium-options.json` reais: o schema
+moderno só tem `use_fog_occlusion`, uma otimização interna, não um controle
+visual). Por isso, adicionado ao catálogo curado (`core/optimization.rs`) o mod
+dedicado **No Fog** (`QSzy55SB`, Modrinth, 1.15M+ downloads, Fabric/Forge/NeoForge/
+Quilt) — como ele entra no catálogo, fica marcado por padrão no checklist de
+otimização (a lógica existente já pré-seleciona tudo que é "compatível").
+
+**Botão "Otimizar" — varredura completa.** Pedido explícito: um botão na tela de
+instância que faz uma varredura geral e otimiza tudo numa tacada só, sem precisar
+abrir o checklist manual. Novo comando `optimize_instance` (`commands/mods.rs`):
+recalcula a compatibilidade do catálogo INTEIRO na hora (não confia em nada
+computado antes — evita instalar algo que já não é mais compatível ou pular algo
+que passou a ser), instala tudo que for compatível e ainda não estiver instalado,
+e aplica o preset de `options.txt` no final — mesmo pipeline do fluxo manual
+("Otimizar desempenho" na Visão geral), só que automático. O núcleo de instalação
+foi extraído pra uma função compartilhada (`install_optimization_project_ids`)
+entre os dois fluxos, pra não duplicar a lógica de "recalcula compatibilidade e
+instala com dependências" duas vezes.
+
+**Redesign da tela de instância (referência: app oficial do Modrinth).** Cabeçalho
+próprio (`InstanceHeader.tsx`): ícone quadrado com a inicial da instância (sem
+gradiente — a paleta do app reserva gradiente só pro logo da marca e barras de
+progresso, ver comentário em `aurora-logo.tsx`), nome, e badges soltos de
+versão/loader/RAM em vez de uma linha de texto corrida. Abas ganharam ícone ao
+lado do texto. Lista de mods instalados (`InstalledContentList.tsx`) com linhas
+maiores (ícone 40px), badges de versão/fonte/dependência em pill, e o botão de
+remover só aparece no hover — menos ruído visual olhando a lista parada.
+
 ## Auditoria completa de qualidade (2026-09-21)
 
 Pedido do usuário: revisão de código em todo o app, não só nos arquivos mexidos na sessão. Feita em duas

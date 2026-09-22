@@ -47,6 +47,7 @@ pub fn run() {
             commands::mods::remove_instance_mod,
             commands::mods::get_recommended_optimizations,
             commands::mods::install_optimizations,
+            commands::mods::optimize_instance,
             commands::modpack::get_modpack_preview,
             commands::modpack::install_modpack,
         ])
