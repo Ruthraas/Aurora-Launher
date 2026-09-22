@@ -4,7 +4,7 @@ use tauri::{AppHandle, Manager};
 use uuid::Uuid;
 
 use crate::core::accounts::{offline, Account, AccountStore};
-use crate::core::skins;
+use crate::core::skins::{self, TextureKind};
 use crate::error::{AppError, AppResult};
 
 fn skins_dir(app: &AppHandle, account_id: Uuid) -> Result<std::path::PathBuf, AppError> {
@@ -80,6 +80,7 @@ pub async fn import_account_skin_by_username(app: AppHandle, id: Uuid, username:
 
 #[tauri::command]
 pub fn upload_account_skin(app: AppHandle, id: Uuid, png_bytes: Vec<u8>) -> AppResult<Account> {
+    skins::validate_texture_upload(&png_bytes, TextureKind::Skin)?;
     let dir = skins_dir(&app, id)?;
     std::fs::write(dir.join("skin.png"), &png_bytes).map_err(AppError::from)?;
 
@@ -92,6 +93,7 @@ pub fn upload_account_skin(app: AppHandle, id: Uuid, png_bytes: Vec<u8>) -> AppR
 
 #[tauri::command]
 pub fn upload_account_cape(app: AppHandle, id: Uuid, png_bytes: Vec<u8>) -> AppResult<Account> {
+    skins::validate_texture_upload(&png_bytes, TextureKind::Cape)?;
     let dir = skins_dir(&app, id)?;
     std::fs::write(dir.join("cape.png"), &png_bytes).map_err(AppError::from)?;
 

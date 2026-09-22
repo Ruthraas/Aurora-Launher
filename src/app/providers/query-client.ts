@@ -1,6 +1,21 @@
-import { QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
+
+// Sem isso, um erro de query/mutation não tratado localmente (nenhum
+// `onError` no `useQuery`/`useMutation` do componente) só existia no
+// estado `isError` — se ninguém checasse, sumia em silêncio. Isso não
+// mostra nada pro usuário (cada tela já trata o próprio erro visível),
+// só garante que fica no console pra depuração.
+function logQueryError(error: unknown, context: string) {
+  console.error(`[react-query] ${context} falhou:`, error);
+}
 
 export const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => logQueryError(error, `query ${JSON.stringify(query.queryKey)}`),
+  }),
+  mutationCache: new MutationCache({
+    onError: (error, _vars, _ctx, mutation) => logQueryError(error, `mutation ${mutation.options.mutationKey ?? "(sem key)"}`),
+  }),
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,

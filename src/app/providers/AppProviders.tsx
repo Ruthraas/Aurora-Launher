@@ -5,15 +5,18 @@ import { BrowserRouter } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import i18n from "@/i18n";
 import { queryClient } from "./query-client";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <I18nextProvider i18n={i18n}>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider delayDuration={200}>
-          <BrowserRouter>{children}</BrowserRouter>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </I18nextProvider>
+    <ErrorBoundary>
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider delayDuration={200}>
+            <BrowserRouter>{children}</BrowserRouter>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </I18nextProvider>
+    </ErrorBoundary>
   );
 }
