@@ -4,7 +4,7 @@ use std::process::Stdio;
 use tokio::process::Command;
 
 use super::install::SharedCache;
-use super::{Instance, LoaderKind};
+use super::{Instance, JvmFlagPreset, LoaderKind};
 use crate::core::accounts::Account;
 use crate::core::loaders::{fabric, forge, neoforge, quilt};
 use crate::core::minecraft::arguments::{resolve_argument_entries, substitute_placeholders, LaunchVariables};
@@ -160,20 +160,15 @@ pub async fn launch(
     game_args.extend(substitute_placeholders(&extra_game_args, &vars));
     jvm_args.extend(substitute_placeholders(&extra_jvm_args, &vars));
 
-    // Versões legadas não trazem `arguments.jvm` no JSON — o launcher
-    // oficial sempre montou essas flags na mão nesse caso, então
-    // fazemos o mesmo.
-    if version.is_legacy() {
-        jvm_args.push(format!("-Djava.library.path={}", vars.natives_directory));
-        jvm_args.push("-cp".to_string());
-        jvm_args.push(vars.classpath.clone());
-    }
-
-    for (i, flag) in crate::core::jvm_flags::flags(instance.jvm_flag_preset).into_iter().enumerate() {
-        jvm_args.insert(i, flag);
-    }
-    jvm_args.insert(0, format!("-Xms{}M", instance.ram_min_mb));
-    jvm_args.insert(1, format!("-Xmx{}M", instance.ram_max_mb));
+    let jvm_args = finalize_jvm_args(
+        jvm_args,
+        version.is_legacy(),
+        &vars.natives_directory,
+        &vars.classpath,
+        instance.jvm_flag_preset,
+        instance.ram_min_mb,
+        instance.ram_max_mb,
+    );
 
     let argv = build_launch_argv(&jvm_args, &main_class, &game_args);
 
@@ -198,4 +193,73 @@ pub async fn launch(
         .spawn()?;
 
     Ok(())
+}
+
+/// Monta a lista final de flags de JVM: acrescenta `-Djava.library.path`/
+/// `-cp` na mão pra versão legada (o JSON dela não traz `arguments.jvm`
+/// — o launcher oficial sempre fez assim), insere as flags do preset
+/// escolhido (Aikar's etc.) e por fim a RAM (`-Xms`/`-Xmx`) na frente
+/// de tudo. Extraído de `launch()` pra dar pra testar a ORDEM sem
+/// precisar de Java/rede/disco de verdade — essa é a parte de
+/// `launch.rs` que mistura menos IO, mas ainda assim nunca teve teste
+/// nenhum até agora.
+fn finalize_jvm_args(
+    mut jvm_args: Vec<String>,
+    is_legacy: bool,
+    natives_directory: &str,
+    classpath: &str,
+    jvm_flag_preset: JvmFlagPreset,
+    ram_min_mb: u32,
+    ram_max_mb: u32,
+) -> Vec<String> {
+    if is_legacy {
+        jvm_args.push(format!("-Djava.library.path={natives_directory}"));
+        jvm_args.push("-cp".to_string());
+        jvm_args.push(classpath.to_string());
+    }
+
+    for (i, flag) in crate::core::jvm_flags::flags(jvm_flag_preset).into_iter().enumerate() {
+        jvm_args.insert(i, flag);
+    }
+    jvm_args.insert(0, format!("-Xms{ram_min_mb}M"));
+    jvm_args.insert(1, format!("-Xmx{ram_max_mb}M"));
+
+    jvm_args
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ram_flags_come_first_then_preset_then_rest() {
+        let result = finalize_jvm_args(vec!["-Dfoo=bar".to_string()], false, "natives", "cp.jar", JvmFlagPreset::None, 1024, 2048);
+        assert_eq!(result, vec!["-Xms1024M".to_string(), "-Xmx2048M".to_string(), "-Dfoo=bar".to_string()]);
+    }
+
+    #[test]
+    fn preset_flags_land_between_ram_and_original_args() {
+        let result = finalize_jvm_args(vec!["-Dfoo=bar".to_string()], false, "natives", "cp.jar", JvmFlagPreset::G1gcOptimized, 1024, 2048);
+        assert_eq!(result[0], "-Xms1024M");
+        assert_eq!(result[1], "-Xmx2048M");
+        assert!(result.len() > 3, "preset G1gcOptimized devia inserir flags no meio");
+        assert_eq!(result.last().unwrap(), "-Dfoo=bar");
+    }
+
+    #[test]
+    fn legacy_version_appends_library_path_and_classpath() {
+        let result = finalize_jvm_args(Vec::new(), true, "/natives/dir", "a.jar;b.jar", JvmFlagPreset::None, 512, 1024);
+        assert!(result.contains(&"-Djava.library.path=/natives/dir".to_string()));
+        assert!(result.contains(&"-cp".to_string()));
+        assert!(result.contains(&"a.jar;b.jar".to_string()));
+        // ordem: -cp tem que vir imediatamente antes do classpath
+        let cp_index = result.iter().position(|a| a == "-cp").unwrap();
+        assert_eq!(result[cp_index + 1], "a.jar;b.jar");
+    }
+
+    #[test]
+    fn non_legacy_version_does_not_append_classpath_flag() {
+        let result = finalize_jvm_args(Vec::new(), false, "/natives/dir", "a.jar", JvmFlagPreset::None, 512, 1024);
+        assert!(!result.contains(&"-cp".to_string()));
+    }
 }

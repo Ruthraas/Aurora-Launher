@@ -322,3 +322,98 @@ pub async fn install_into_instance(instance_dir: &Path, mod_ref: &ModRef, explic
     })
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::instances::{InstanceStatus, JvmFlagPreset};
+
+    fn temp_instance_dir() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("aurora-mods-compat-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn fake_instance(loader: LoaderKind) -> Instance {
+        Instance {
+            schema_version: 1,
+            id: uuid::Uuid::new_v4(),
+            name: "Teste".to_string(),
+            mc_version: "1.21.1".to_string(),
+            loader,
+            ram_min_mb: 1024,
+            ram_max_mb: 2048,
+            jvm_flag_preset: JvmFlagPreset::None,
+            status: InstanceStatus::Ready,
+            error_message: None,
+            modpack_origin: None,
+            missing_manual_downloads: Vec::new(),
+            created_at: Utc::now(),
+            last_played: None,
+        }
+    }
+
+    fn fake_project(project_id: &str) -> ProjectRef {
+        ProjectRef {
+            source: ModSource::Modrinth,
+            project_id: project_id.to_string(),
+            content_type: ContentType::Mod,
+            title: None,
+            icon_url: None,
+        }
+    }
+
+    // Regressão do bug real desta sessão: o id gravado no lock (pela
+    // instalação) tem que ser o MESMO usado aqui pra comparar, senão
+    // "já instalado" nunca bate. Esse teste roda sem rede — o caminho
+    // "já instalado" retorna ANTES de qualquer chamada de API, então
+    // dá pra testar de verdade sem mockar Modrinth/CurseForge.
+    #[tokio::test]
+    async fn already_installed_short_circuits_before_any_network_call() {
+        let dir = temp_instance_dir();
+        ModsLockStore::new(&dir)
+            .upsert(ModLockEntry {
+                source: ModSource::Modrinth,
+                project_id: "AANobbMI".to_string(),
+                version_id: "v1".to_string(),
+                version_number: "1.0.0".to_string(),
+                file_name: "sodium.jar".to_string(),
+                sha1: "abc".to_string(),
+                installed_at: Utc::now(),
+                explicit: true,
+                title: Some("Sodium".to_string()),
+                icon_url: None,
+                content_type: ContentType::Mod,
+            })
+            .unwrap();
+
+        let instance = fake_instance(LoaderKind::Fabric { loader_version: "0.15.0".to_string() });
+        let project = fake_project("AANobbMI");
+
+        let compat = compute_compatibility(&instance, &dir, &project, None).await.unwrap();
+        assert!(matches!(compat, InstanceCompat::AlreadyInstalled { installed_version } if installed_version == "1.0.0"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn vanilla_instance_rejects_loader_locked_content() {
+        let dir = temp_instance_dir();
+        let instance = fake_instance(LoaderKind::Vanilla);
+        let project = fake_project("some-mod");
+
+        let compat = compute_compatibility(&instance, &dir, &project, None).await.unwrap();
+        assert!(matches!(compat, InstanceCompat::Incompatible { reason } if reason.contains("Vanilla")));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn loader_name_maps_each_variant() {
+        assert_eq!(loader_name(&LoaderKind::Vanilla), None);
+        assert_eq!(loader_name(&LoaderKind::Fabric { loader_version: "0.15.0".to_string() }), Some("fabric"));
+        assert_eq!(loader_name(&LoaderKind::Forge { forge_version: "1.20.2-47.2.0".to_string() }), Some("forge"));
+        assert_eq!(loader_name(&LoaderKind::NeoForge { neoforge_version: "21.1.0".to_string() }), Some("neoforge"));
+        assert_eq!(loader_name(&LoaderKind::Quilt { loader_version: "0.20.0".to_string() }), Some("quilt"));
+    }
+}
+
