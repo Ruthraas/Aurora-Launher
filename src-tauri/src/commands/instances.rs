@@ -274,3 +274,71 @@ pub fn open_instance_folder(app: AppHandle, id: Uuid) -> AppResult<()> {
     app.opener().open_path(dir.to_string_lossy(), None::<&str>).map_err(|e| AppError::InvalidInput(e.to_string()))?;
     Ok(())
 }
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LogFileInfo {
+    file_name: String,
+    size_bytes: u64,
+    modified_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// Diretórios onde arquivo de log pode aparecer numa instância:
+/// `logs/` (o launcher sempre grava `launcher-stdout.log`/
+/// `launcher-stderr.log` ali, ver `core::instances::launch`; o próprio
+/// Minecraft, via log4j, grava `latest.log`/`debug.log` no mesmo
+/// lugar) e `crash-reports/` (relatório de crash do jogo, formato
+/// vanilla padrão — nome do arquivo tem timestamp, não é fixo).
+const LOG_DIRS: &[&str] = &["logs", "crash-reports"];
+
+/// Lista os arquivos de log/crash-report disponíveis pra uma
+/// instância, mais recente primeiro — pra popular a aba "Logs" da tela
+/// de detalhe sem o usuário precisar navegar manualmente até a pasta.
+#[tauri::command]
+pub fn list_instance_logs(app: AppHandle, id: Uuid) -> AppResult<Vec<LogFileInfo>> {
+    let store = instance_store(&app)?;
+    let instance_dir = store.instance_dir(id);
+
+    let mut files = Vec::new();
+    for dir_name in LOG_DIRS {
+        let dir = instance_dir.join(dir_name);
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let Ok(metadata) = entry.metadata() else { continue };
+            if !metadata.is_file() {
+                continue;
+            }
+            let Some(name) = entry.file_name().to_str().map(str::to_string) else { continue };
+            let modified_at = metadata.modified().ok().map(chrono::DateTime::<chrono::Utc>::from);
+            files.push(LogFileInfo { file_name: format!("{dir_name}/{name}"), size_bytes: metadata.len(), modified_at });
+        }
+    }
+    files.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    Ok(files)
+}
+
+const MAX_LOG_READ_BYTES: u64 = 512 * 1024;
+
+/// Lê o conteúdo de um log listado por `list_instance_logs` — só os
+/// últimos `MAX_LOG_READ_BYTES` (log de sessão longa pode ter dezenas
+/// de MB; a UI só precisa do final pra diagnosticar um crash recente).
+/// `relative_path` tem que ser exatamente um dos valores devolvidos por
+/// `list_instance_logs` (`"<pasta>/<arquivo>"`) — validado contra
+/// `LOG_DIRS` e sem `..`/separador extra, pra não virar um jeito de ler
+/// qualquer arquivo arbitrário do disco a partir do front.
+#[tauri::command]
+pub fn read_instance_log(app: AppHandle, id: Uuid, relative_path: String) -> AppResult<String> {
+    let (dir_name, file_name) = relative_path
+        .split_once('/')
+        .ok_or_else(|| AppError::InvalidInput("caminho de log inválido".to_string()))?;
+    if !LOG_DIRS.contains(&dir_name) || file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
+        return Err(AppError::InvalidInput("caminho de log inválido".to_string()).into());
+    }
+
+    let store = instance_store(&app)?;
+    let path = store.instance_dir(id).join(dir_name).join(file_name);
+    let bytes = std::fs::read(&path).map_err(AppError::from)?;
+
+    let tail = if bytes.len() as u64 > MAX_LOG_READ_BYTES { &bytes[bytes.len() - MAX_LOG_READ_BYTES as usize..] } else { &bytes[..] };
+    Ok(String::from_utf8_lossy(tail).into_owned())
+}

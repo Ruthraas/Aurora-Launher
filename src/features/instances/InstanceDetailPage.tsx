@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Blocks, LayoutGrid } from "lucide-react";
+import { Blocks, FileText, LayoutGrid } from "lucide-react";
 import { PlayButton } from "@/components/play-button";
 import { cn } from "@/lib/utils";
 import { useInstances } from "./use-instances";
@@ -8,15 +8,17 @@ import { useInstallEvents } from "./use-install-events";
 import { useLaunchInstance } from "./use-instance-mutations";
 import { OverviewTab } from "./OverviewTab";
 import { ModsTab } from "./ModsTab";
+import { LogsTab } from "./LogsTab";
 import { OptimizeButton } from "./OptimizeButton";
 import { InstanceHeader } from "./InstanceHeader";
 import { useJobEvents } from "@/features/discover/use-job-events";
 
-type Tab = "overview" | "mods";
+type Tab = "overview" | "mods" | "logs";
 
 const TABS: { value: Tab; label: string; icon: typeof LayoutGrid }[] = [
   { value: "overview", label: "Visão geral", icon: LayoutGrid },
   { value: "mods", label: "Mods", icon: Blocks },
+  { value: "logs", label: "Logs", icon: FileText },
 ];
 
 export function InstanceDetailPage() {
@@ -73,7 +75,13 @@ export function InstanceDetailPage() {
       </div>
 
       <div className="scroll-thin flex-1 overflow-y-auto p-6">
-        {tab === "overview" ? <OverviewTab instance={instance} /> : <ModsTab instance={instance} />}
+        {tab === "overview" ? (
+          <OverviewTab instance={instance} />
+        ) : tab === "mods" ? (
+          <ModsTab instance={instance} />
+        ) : (
+          <LogsTab instance={instance} />
+        )}
       </div>
     </div>
   );

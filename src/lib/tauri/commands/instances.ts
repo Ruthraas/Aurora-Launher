@@ -83,6 +83,20 @@ export function openInstanceFolder(id: string): Promise<null> {
   return callCommand<null>("open_instance_folder", { id });
 }
 
+export interface LogFileInfo {
+  fileName: string;
+  sizeBytes: number;
+  modifiedAt: string | null;
+}
+
+export function listInstanceLogs(id: string): Promise<LogFileInfo[]> {
+  return callCommand<LogFileInfo[]>("list_instance_logs", { id });
+}
+
+export function readInstanceLog(id: string, relativePath: string): Promise<string> {
+  return callCommand<string>("read_instance_log", { id, relativePath });
+}
+
 export interface FabricLoaderEntry {
   loader: { version: string; stable: boolean };
 }
