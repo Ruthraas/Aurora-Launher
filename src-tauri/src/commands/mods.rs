@@ -21,21 +21,26 @@ pub struct InstanceCompatEntry {
 /// Calcula, pra cada instância existente, se `project` pode ser
 /// instalado nela — ver `InstanceCompat`. Consulta as APIs dos
 /// provedores (uma chamada por instância, mais uma por dependência
-/// obrigatória resolvida) — pode demorar um pouco com muitas
-/// instâncias, mas não há como saber a resposta sem perguntar pra API.
+/// obrigatória resolvida) — antes rodava uma instância de cada vez
+/// (`for instance { ...await... }`), somando a latência de todas em
+/// série; com `join_all` todas saem ao mesmo tempo, o total vira só a
+/// mais lenta.
 #[tauri::command]
 pub async fn get_mod_compatibility(app: AppHandle, project: ProjectRef) -> AppResult<Vec<InstanceCompatEntry>> {
     let store = instance_store(&app)?;
     let instances = store.list()?;
     let cf_api_key = SettingsStore::new(&app)?.read()?.curseforge_api_key;
 
-    let mut out = Vec::with_capacity(instances.len());
-    for instance in instances {
+    let checks = instances.into_iter().map(|instance| {
         let instance_dir = store.instance_dir(instance.id);
-        let compat = mods_compat::compute_compatibility(&instance, &instance_dir, &project, cf_api_key.as_deref()).await?;
-        out.push(InstanceCompatEntry { instance_id: instance.id, compat });
-    }
-    Ok(out)
+        let project = &project;
+        let cf_api_key = cf_api_key.as_deref();
+        async move {
+            let compat = mods_compat::compute_compatibility(&instance, &instance_dir, project, cf_api_key).await?;
+            Ok::<_, AppError>(InstanceCompatEntry { instance_id: instance.id, compat })
+        }
+    });
+    futures::future::try_join_all(checks).await.map_err(Into::into)
 }
 
 /// Instala `project` nas instâncias de `instance_ids` (mod principal +
@@ -143,8 +148,7 @@ pub async fn get_recommended_optimizations(app: AppHandle, instance_id: Uuid) ->
     let instance_dir = store.instance_dir(instance_id);
     let cf_api_key = SettingsStore::new(&app)?.read()?.curseforge_api_key;
 
-    let mut out = Vec::new();
-    for info in optimization::recommended_for(&instance.loader) {
+    let checks = optimization::recommended_for(&instance.loader).iter().map(|info| {
         let project = ProjectRef {
             source: ModSource::Modrinth,
             project_id: info.project_id.to_string(),
@@ -152,10 +156,15 @@ pub async fn get_recommended_optimizations(app: AppHandle, instance_id: Uuid) ->
             title: Some(info.name.to_string()),
             icon_url: None,
         };
-        let compat = mods_compat::compute_compatibility(&instance, &instance_dir, &project, cf_api_key.as_deref()).await?;
-        out.push(OptimizationEntry { info: *info, compat });
-    }
-    Ok(out)
+        let instance = &instance;
+        let instance_dir = &instance_dir;
+        let cf_api_key = cf_api_key.as_deref();
+        async move {
+            let compat = mods_compat::compute_compatibility(instance, instance_dir, &project, cf_api_key).await?;
+            Ok::<_, AppError>(OptimizationEntry { info: *info, compat })
+        }
+    });
+    futures::future::try_join_all(checks).await.map_err(Into::into)
 }
 
 /// Instala os mods de otimização escolhidos (por `project_id`, slug do
@@ -286,8 +295,7 @@ async fn run_optimize_instance(app: &AppHandle, handle: &crate::core::jobs::JobH
 
     emit_progress(app, handle.id, JobPhase::FetchingMetadata, 0, 1);
 
-    let mut to_install = Vec::new();
-    for info in optimization::recommended_for(&instance.loader) {
+    let checks = optimization::recommended_for(&instance.loader).iter().map(|info| {
         let project = ProjectRef {
             source: ModSource::Modrinth,
             project_id: info.project_id.to_string(),
@@ -295,11 +303,17 @@ async fn run_optimize_instance(app: &AppHandle, handle: &crate::core::jobs::JobH
             title: Some(info.name.to_string()),
             icon_url: None,
         };
-        let compat = mods_compat::compute_compatibility(&instance, &instance_dir, &project, cf_api_key.as_deref()).await?;
-        if let InstanceCompat::Compatible { .. } = compat {
-            to_install.push(info.project_id.to_string());
+        let instance = &instance;
+        let instance_dir = &instance_dir;
+        let cf_api_key = cf_api_key.as_deref();
+        async move {
+            let compat = mods_compat::compute_compatibility(instance, instance_dir, &project, cf_api_key).await?;
+            Ok::<_, AppError>((info.project_id.to_string(), compat))
         }
-    }
+    });
+    let results = futures::future::try_join_all(checks).await?;
+    let to_install: Vec<String> =
+        results.into_iter().filter(|(_, compat)| matches!(compat, InstanceCompat::Compatible { .. })).map(|(id, _)| id).collect();
 
     install_optimization_project_ids(app, handle, &instance, &instance_dir, cf_api_key.as_deref(), &to_install).await?;
     apply_options_preset(app, handle, &instance_dir)?;

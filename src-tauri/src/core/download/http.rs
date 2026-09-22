@@ -6,12 +6,23 @@ use crate::error::AppError;
 
 static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
-/// Cliente HTTP compartilhado, com timeout — sem isso, uma conexão que
-/// trava (em vez de falhar rápido) deixaria a instalação parada pra
-/// sempre sem nenhum erro pra mostrar.
+/// Timeout usado por download de arquivo (client.jar, bibliotecas,
+/// pacotes de modpack inteiros) — bem mais folgado que o default do
+/// cliente porque é timeout de requisição TOTAL (não "parado por N
+/// segundos"): um arquivo grande numa conexão lenta pode legitimamente
+/// levar minutos ainda transferindo normalmente.
+pub const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// Cliente HTTP compartilhado. O timeout default (30s) é pra chamada
+/// de API pequena (busca, metadados, versões) — sem isso, uma conexão
+/// que trava deixaria a instalação parada pra sempre sem nenhum erro
+/// pra mostrar. Download de arquivo usa `DOWNLOAD_TIMEOUT` por cima
+/// deste via `.timeout()` no request (reqwest deixa sobrescrever por
+/// chamada) — ver `download::file::download_file`.
 pub fn client() -> &'static reqwest::Client {
     CLIENT.get_or_init(|| {
         reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(30))
             .build()
             .expect("configuração do cliente HTTP é estática e válida")

@@ -4,7 +4,7 @@ use sha1::{Digest, Sha1};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-use super::http::{client, with_retry};
+use super::http::{client, with_retry, DOWNLOAD_TIMEOUT};
 use crate::error::AppError;
 
 /// Baixa `url` pra `dest`, verificando o SHA1 esperado quando ele
@@ -32,7 +32,7 @@ pub async fn download_file(url: &str, dest: &Path, expected_sha1: Option<&str>) 
     }
 
     let bytes = with_retry(|| async {
-        let response = client().get(url).send().await?.error_for_status()?;
+        let response = client().get(url).timeout(DOWNLOAD_TIMEOUT).send().await?.error_for_status()?;
         Ok(response.bytes().await?)
     })
     .await?;

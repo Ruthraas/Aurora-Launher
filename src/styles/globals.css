@@ -107,6 +107,18 @@
   html {
     @apply font-sans;
     }
+  /* Anel de foco visível pra navegação por teclado — o `Button` já
+     define o próprio `focus-visible:ring-*` (ver button.tsx), mas
+     links, tabs e outros elementos clicáveis crus (`<a>`, `<button>`
+     sem o componente) não tinham NENHUM estilo de foco: num tema
+     escuro totalmente customizado como o da Aurora, o anel padrão do
+     webview fica quase invisível. Esse fallback cobre o resto. */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
 }
 
 @layer utilities {
