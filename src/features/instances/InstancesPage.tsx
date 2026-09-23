@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Boxes, Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
@@ -14,16 +15,17 @@ import type { LoaderKind } from "@/lib/tauri/commands/instances";
 
 type LoaderFilter = "all" | LoaderKind["type"];
 
-const LOADER_FILTERS: { value: LoaderFilter; label: string }[] = [
-  { value: "all", label: "Todas" },
-  { value: "vanilla", label: "Vanilla" },
-  { value: "fabric", label: "Fabric" },
-  { value: "forge", label: "Forge" },
-  { value: "neoforge", label: "NeoForge" },
-  { value: "quilt", label: "Quilt" },
+const LOADER_FILTER_KEYS: { value: LoaderFilter; labelKey: string }[] = [
+  { value: "all", labelKey: "instancesPage.filters.all" },
+  { value: "vanilla", labelKey: "instancesPage.filters.vanilla" },
+  { value: "fabric", labelKey: "instancesPage.filters.fabric" },
+  { value: "forge", labelKey: "instancesPage.filters.forge" },
+  { value: "neoforge", labelKey: "instancesPage.filters.neoforge" },
+  { value: "quilt", labelKey: "instancesPage.filters.quilt" },
 ];
 
 export function InstancesPage() {
+  const { t } = useTranslation();
   useInstallEvents();
   const { data: instances, isLoading } = useInstances();
   const [query, setQuery] = useState("");
@@ -40,7 +42,7 @@ export function InstancesPage() {
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        title="Instâncias"
+        title={t("instancesPage.title")}
         actions={
           <>
             <div className="relative hidden sm:block">
@@ -48,7 +50,7 @@ export function InstancesPage() {
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar"
+                placeholder={t("instancesPage.searchPlaceholder")}
                 className="h-8 w-44 pl-8 text-sm"
               />
             </div>
@@ -59,9 +61,9 @@ export function InstancesPage() {
       />
 
       <div className="flex flex-wrap gap-2 border-b border-border px-6 py-3">
-        {LOADER_FILTERS.map((filter) => (
+        {LOADER_FILTER_KEYS.map((filter) => (
           <Chip key={filter.value} active={loaderFilter === filter.value} onClick={() => setLoaderFilter(filter.value)}>
-            {filter.label}
+            {t(filter.labelKey)}
           </Chip>
         ))}
       </div>
@@ -74,13 +76,9 @@ export function InstancesPage() {
             ))}
           </div>
         ) : !instances || instances.length === 0 ? (
-          <EmptyState
-            icon={Boxes}
-            title="Nenhuma instância ainda"
-            description="Crie sua primeira instância para começar a jogar."
-          />
+          <EmptyState icon={Boxes} title={t("instances.emptyTitle")} description={t("instances.emptyDescription")} />
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhuma instância bate com esse filtro.</p>
+          <p className="text-sm text-muted-foreground">{t("instancesPage.noMatch")}</p>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {filtered.map((instance) => (

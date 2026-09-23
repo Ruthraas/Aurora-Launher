@@ -27,5 +27,128 @@
     "title": "Settings",
     "language": "Language",
     "about": "About"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "loading": "Loading…"
+  },
+  "instanceCard": {
+    "play": "Play",
+    "opening": "Opening…",
+    "exportTitle": "Export instance (.zip)",
+    "reinstallTitle": "Reinstall (repairs missing or corrupted files)",
+    "retry": "Retry",
+    "retrying": "Retrying…",
+    "installFailed": "Installation failed.",
+    "missingManualDownloads_one": "{{count}} mod to download manually —",
+    "missingManualDownloads_other": "{{count}} mods to download manually —",
+    "viewDetails": "view details",
+    "confirmDeleteTitle": "Delete \"{{name}}\"?",
+    "confirmDeleteDescription": "Deletes the whole instance — worlds, settings and installed mods. Can't be undone.",
+    "delete": "Delete"
+  },
+  "instancesPage": {
+    "title": "Instances",
+    "searchPlaceholder": "Search",
+    "import": "Import",
+    "noMatch": "No instance matches this filter.",
+    "filters": {
+      "all": "All",
+      "vanilla": "Vanilla",
+      "fabric": "Fabric",
+      "forge": "Forge",
+      "neoforge": "NeoForge",
+      "quilt": "Quilt"
+    }
+  },
+  "instanceDetail": {
+    "notFound": "Instance not found.",
+    "backToInstances": "Back to Instances",
+    "tabs": {
+      "overview": "Overview",
+      "mods": "Mods",
+      "worlds": "Worlds",
+      "logs": "Logs"
+    }
+  },
+  "overview": {
+    "optimizeTitle": "Optimize performance",
+    "optimizeDescription": "Mods compatible with {{version}} and {{loader}}. Review the list before installing.",
+    "installedSuccess": "Installed successfully",
+    "installingMods": "Installing mods…",
+    "selectedCount": "{{selected}} of {{total}} selected",
+    "installButton": "Install {{count}} mod(s)",
+    "alreadyInstalled": "Already installed",
+    "ram": "Memory",
+    "jvmFlags": "JVM flags",
+    "extraFlags": "Extra flags",
+    "extraFlagsPlaceholder": "e.g.: -Dfoo=bar -XX:+AlwaysPreTouch",
+    "extraFlagsHint": "Space-separated — applied after the preset, for advanced users.",
+    "openFolder": "Open folder",
+    "loadingRecommendations": "Loading recommendations…",
+    "presetNone": "Default (no extra flags)",
+    "presetG1gc": "G1GC optimized (recommended)"
+  },
+  "optimizeButton": {
+    "label": "Optimize",
+    "optimized": "Optimized",
+    "preparing": "Preparing…",
+    "tooltip": "Full sweep: installs everything compatible to optimize this instance and adjusts options.txt"
+  },
+  "logsTab": {
+    "empty": "No logs yet",
+    "emptyDescription": "Logs show up here after the instance has been launched at least once.",
+    "refresh": "Refresh",
+    "copy": "Copy",
+    "copied": "Copied",
+    "loading": "Loading…",
+    "emptyFile": "(empty file)"
+  },
+  "addModDialog": {
+    "title": "Add {{title}} to an instance",
+    "description": "Choose which instances to install into. Only the ones that support this mod can be selected.",
+    "compatCheckFailed": "Couldn't check compatibility right now.",
+    "retry": "Try again",
+    "noInstances": "You don't have any instance yet.",
+    "noCompatible": "None of your instances are compatible with this mod right now.",
+    "compatibleSection": "Compatible",
+    "alsoInstalled": "Will also install: {{files}}",
+    "alreadyInstalledSection": "Already installed",
+    "incompatibleSection": "Incompatible ({{count}})",
+    "installing": "Installing…",
+    "installFailed": "Failed to install.",
+    "installed": "Installed.",
+    "cancel": "Cancel",
+    "addButton_one": "Add to {{count}} instance",
+    "addButton_other": "Add to {{count}} instances"
+  },
+  "downloadModpackDialog": {
+    "title": "Download {{title}}",
+    "description": "The launcher creates a new instance with the modpack's exact Minecraft version and loader, and downloads all the mods.",
+    "instanceName": "Instance name",
+    "modpackVersion": "Modpack version",
+    "loading": "Loading…",
+    "minecraft": "Minecraft",
+    "loader": "Loader",
+    "mods": "Mods",
+    "modCount": "{{count}} mods",
+    "download": "Download",
+    "suggestedRam": "Suggested RAM",
+    "cancel": "Cancel",
+    "downloadButton": "Download and create instance",
+    "installFailed": "Failed to install the modpack.",
+    "instanceReady": "Instance created — ready to play.",
+    "preparing": "Preparing…",
+    "close": "Close"
+  },
+  "worldsTab": {
+    "empty": "No worlds yet",
+    "emptyDescription": "Worlds show up here after you create one in-game.",
+    "title": "Worlds ({{count}})",
+    "openFolder": "Open world folder",
+    "delete": "Delete world",
+    "confirmDeleteTitle": "Delete \"{{name}}\"?",
+    "confirmDeleteDescription": "Deletes the world forever — all progress saved in it. Can't be undone."
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Check, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { optimizeInstance } from "@/lib/tauri/commands/optimization";
@@ -13,6 +14,7 @@ import { jobPhaseLabels } from "@/features/discover/job-phase-labels";
  *  Fica no cabeçalho porque faz sentido em qualquer aba, não só na
  *  Visão geral. */
 export function OptimizeButton({ instanceId }: { instanceId: string }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [jobId, setJobId] = useState<string | null>(null);
   const [justOptimized, setJustOptimized] = useState(false);
@@ -42,22 +44,22 @@ export function OptimizeButton({ instanceId }: { instanceId: string }) {
       className="gap-1.5"
       disabled={optimize.isPending || Boolean(running)}
       onClick={() => optimize.mutate()}
-      title="Varredura completa: instala tudo que for compatível para otimizar essa instância e ajusta o options.txt"
+      title={t("optimizeButton.tooltip")}
     >
       {justOptimized ? (
         <>
           <Check size={14} className="text-primary" />
-          Otimizado
+          {t("optimizeButton.optimized")}
         </>
       ) : optimize.isPending || running ? (
         <>
           <Loader2 size={14} className="animate-spin" />
-          {job ? jobPhaseLabels[job.phase] : "Preparando…"}
+          {job ? jobPhaseLabels[job.phase] : t("optimizeButton.preparing")}
         </>
       ) : (
         <>
           <Wand2 size={14} />
-          Otimizar
+          {t("optimizeButton.label")}
         </>
       )}
     </Button>

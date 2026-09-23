@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Check, FolderOpen, Loader2, Sparkles } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { ProgressBar } from "@/components/progress-bar";
@@ -18,12 +19,12 @@ import { InstalledContentList } from "./InstalledContentList";
 const RAM_MIN_GB = 1;
 const RAM_MAX_GB = 16;
 
-const JVM_PRESET_LABEL: Record<JvmFlagPreset, string> = {
-  none: "Padrão (nenhuma flag extra)",
-  g1gcOptimized: "G1GC otimizado (recomendado)",
-};
-
 export function OverviewTab({ instance }: { instance: Instance }) {
+  const { t } = useTranslation();
+  const jvmPresetLabel: Record<JvmFlagPreset, string> = {
+    none: t("overview.presetNone"),
+    g1gcOptimized: t("overview.presetG1gc"),
+  };
   useJobEvents();
   const queryClient = useQueryClient();
   const [ramGb, setRamGb] = useState(Math.round(instance.ramMaxMb / 1024));
@@ -110,13 +111,13 @@ export function OverviewTab({ instance }: { instance: Instance }) {
       <div className="flex flex-col gap-6 lg:col-span-2">
         {loadingOptimizations ? (
           <div className="flex min-h-[120px] items-center justify-center rounded-xl border border-border bg-card">
-            <p className="text-sm text-muted-foreground">Carregando recomendações…</p>
+            <p className="text-sm text-muted-foreground">{t("overview.loadingRecommendations")}</p>
           </div>
         ) : optimizations && showCard ? (
           <div className="flex flex-col rounded-xl border border-border bg-card p-5">
             <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
               <Sparkles size={13} />
-              Otimizar desempenho
+              {t("overview.optimizeTitle")}
             </p>
 
             {showSuccess ? (
@@ -124,12 +125,12 @@ export function OverviewTab({ instance }: { instance: Instance }) {
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary">
                   <Check size={20} />
                 </span>
-                <p className="text-sm font-medium text-foreground">Instalado com sucesso</p>
+                <p className="text-sm font-medium text-foreground">{t("overview.installedSuccess")}</p>
               </div>
             ) : installing ? (
               <div className="flex flex-1 flex-col justify-center gap-2 py-8">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">{job ? jobPhaseLabels[job.phase] : "Instalando mods…"}</span>
+                  <span className="text-foreground">{job ? jobPhaseLabels[job.phase] : t("overview.installingMods")}</span>
                   {job && job.total > 0 && (
                     <span className="text-muted-foreground">
                       {job.done}/{job.total}
@@ -141,8 +142,7 @@ export function OverviewTab({ instance }: { instance: Instance }) {
             ) : (
               <>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Mods compatíveis com {instance.mcVersion} e {instance.loader.type}. Você confere a lista antes de
-                  instalar.
+                  {t("overview.optimizeDescription", { version: instance.mcVersion, loader: instance.loader.type })}
                 </p>
 
                 <div className="mt-4 flex flex-1 flex-col gap-1">
@@ -165,7 +165,7 @@ export function OverviewTab({ instance }: { instance: Instance }) {
                           <p className="text-sm font-medium text-foreground">{entry.name}</p>
                           <p className="truncate text-xs text-muted-foreground">
                             {entry.compat.status === "alreadyInstalled"
-                              ? "Já instalado"
+                              ? t("overview.alreadyInstalled")
                               : entry.compat.status === "incompatible"
                                 ? entry.compat.reason
                                 : entry.description}
@@ -178,11 +178,11 @@ export function OverviewTab({ instance }: { instance: Instance }) {
 
                 <div className="mt-4 flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">
-                    {selected.size} de {optimizations.length} selecionados
+                    {t("overview.selectedCount", { selected: selected.size, total: optimizations.length })}
                   </p>
                   <Button size="sm" disabled={selected.size === 0 || install.isPending} onClick={() => install.mutate()}>
                     {install.isPending ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : null}
-                    Instalar {selected.size} mod(s)
+                    {t("overview.installButton", { count: selected.size })}
                   </Button>
                 </div>
                 {install.isError && <p className="mt-2 text-xs text-destructive">{install.error.message}</p>}
@@ -197,7 +197,7 @@ export function OverviewTab({ instance }: { instance: Instance }) {
       <div className="flex flex-col gap-4">
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Memória</p>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("overview.ram")}</p>
             <span className="text-sm font-semibold text-primary">{ramGb} GB</span>
           </div>
           <Slider
@@ -211,7 +211,7 @@ export function OverviewTab({ instance }: { instance: Instance }) {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5">
-          <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Flags da JVM</p>
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("overview.jvmFlags")}</p>
           <Select
             value={preset}
             onValueChange={(value) => {
@@ -224,26 +224,26 @@ export function OverviewTab({ instance }: { instance: Instance }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">{JVM_PRESET_LABEL.none}</SelectItem>
-              <SelectItem value="g1gcOptimized">{JVM_PRESET_LABEL.g1gcOptimized}</SelectItem>
+              <SelectItem value="none">{jvmPresetLabel.none}</SelectItem>
+              <SelectItem value="g1gcOptimized">{jvmPresetLabel.g1gcOptimized}</SelectItem>
             </SelectContent>
           </Select>
 
-          <p className="mt-3 mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">Flags extras</p>
+          <p className="mt-3 mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("overview.extraFlags")}</p>
           <Input
-            placeholder="ex.: -Dfoo=bar -XX:+AlwaysPreTouch"
+            placeholder={t("overview.extraFlagsPlaceholder")}
             value={customJvmArgs}
             onChange={(event) => setCustomJvmArgs(event.target.value)}
             onBlur={() => {
               if (customJvmArgs !== instance.customJvmArgs) saveSettings.mutate({ ramGb, preset, customJvmArgs });
             }}
           />
-          <p className="mt-1.5 text-xs text-muted-foreground">Separadas por espaço — aplicadas depois do preset, pra quem sabe o que está fazendo.</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">{t("overview.extraFlagsHint")}</p>
         </div>
 
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void openInstanceFolder(instance.id)}>
           <FolderOpen size={14} />
-          Abrir pasta
+          {t("overview.openFolder")}
         </Button>
       </div>
     </div>

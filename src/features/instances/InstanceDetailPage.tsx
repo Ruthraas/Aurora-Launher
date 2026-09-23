@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Blocks, FileText, Globe, LayoutGrid } from "lucide-react";
 import { PlayButton } from "@/components/play-button";
 import { cn } from "@/lib/utils";
@@ -16,14 +17,15 @@ import { useJobEvents } from "@/features/discover/use-job-events";
 
 type Tab = "overview" | "mods" | "worlds" | "logs";
 
-const TABS: { value: Tab; label: string; icon: typeof LayoutGrid }[] = [
-  { value: "overview", label: "Visão geral", icon: LayoutGrid },
-  { value: "mods", label: "Mods", icon: Blocks },
-  { value: "worlds", label: "Mundos", icon: Globe },
-  { value: "logs", label: "Logs", icon: FileText },
+const TABS: { value: Tab; labelKey: string; icon: typeof LayoutGrid }[] = [
+  { value: "overview", labelKey: "instanceDetail.tabs.overview", icon: LayoutGrid },
+  { value: "mods", labelKey: "instanceDetail.tabs.mods", icon: Blocks },
+  { value: "worlds", labelKey: "instanceDetail.tabs.worlds", icon: Globe },
+  { value: "logs", labelKey: "instanceDetail.tabs.logs", icon: FileText },
 ];
 
 export function InstanceDetailPage() {
+  const { t } = useTranslation();
   useInstallEvents();
   useJobEvents();
   const { id } = useParams<{ id: string }>();
@@ -37,9 +39,9 @@ export function InstanceDetailPage() {
   if (!instance) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3">
-        <p className="text-sm text-muted-foreground">Instância não encontrada.</p>
+        <p className="text-sm text-muted-foreground">{t("instanceDetail.notFound")}</p>
         <Link to="/instances" className="text-sm text-primary hover:underline">
-          Voltar pra Instâncias
+          {t("instanceDetail.backToInstances")}
         </Link>
       </div>
     );
@@ -53,14 +55,14 @@ export function InstanceDetailPage() {
           <div className="flex shrink-0 items-center gap-2">
             <OptimizeButton instanceId={instance.id} />
             <PlayButton disabled={launchInstance.isPending} onClick={() => launchInstance.mutate(instance.id)}>
-              {launchInstance.isPending ? "Abrindo…" : "Jogar"}
+              {launchInstance.isPending ? t("instanceCard.opening") : t("instanceCard.play")}
             </PlayButton>
           </div>
         )}
       </div>
 
       <div className="flex gap-5 border-b border-border px-6">
-        {TABS.map(({ value, label, icon: Icon }) => (
+        {TABS.map(({ value, labelKey, icon: Icon }) => (
           <button
             key={value}
             type="button"
@@ -71,7 +73,7 @@ export function InstanceDetailPage() {
             )}
           >
             <Icon size={14} />
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>

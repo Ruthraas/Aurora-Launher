@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Download, Loader2, RotateCw, Settings, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlayButton } from "@/components/play-button";
@@ -13,6 +14,7 @@ import { installStageLabels } from "./install-stage-labels";
 import { loaderLabel } from "./loader-label";
 
 export function InstanceCard({ instance }: { instance: Instance }) {
+  const { t } = useTranslation();
   const progress = useInstallProgressStore((state) => state.progress[instance.id]);
   const deleteInstance = useDeleteInstance();
   const launchInstance = useLaunchInstance();
@@ -38,7 +40,7 @@ export function InstanceCard({ instance }: { instance: Instance }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            title="Exportar instância (.zip)"
+            title={t("instanceCard.exportTitle")}
             disabled={exportMutation.isPending}
             onClick={() => exportMutation.mutate()}
           >
@@ -59,9 +61,9 @@ export function InstanceCard({ instance }: { instance: Instance }) {
       <ConfirmDialog
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
-        title={`Excluir "${instance.name}"?`}
-        description="Apaga a instância inteira — mundos, configurações e mods instalados. Não tem como desfazer."
-        confirmLabel="Excluir"
+        title={t("instanceCard.confirmDeleteTitle", { name: instance.name })}
+        description={t("instanceCard.confirmDeleteDescription")}
+        confirmLabel={t("instanceCard.delete")}
         onConfirm={() => {
           deleteInstance.mutate(instance.id);
           setConfirmingDelete(false);
@@ -71,7 +73,7 @@ export function InstanceCard({ instance }: { instance: Instance }) {
       {instance.status === "installing" && (
         <div className="mt-3 space-y-1.5">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{progress ? installStageLabels[progress.stage] : "Preparando…"}</span>
+            <span>{progress ? installStageLabels[progress.stage] : t("common.loading")}</span>
             {progress && progress.total > 0 && (
               <span>
                 {progress.completed}/{progress.total}
@@ -87,9 +89,9 @@ export function InstanceCard({ instance }: { instance: Instance }) {
           {instance.status === "incomplete" && (
             <p className="flex items-center gap-1.5 text-xs text-warning">
               <TriangleAlert size={12} />
-              {instance.missingManualDownloads.length} mod(s) pra baixar na mão —{" "}
+              {t("instanceCard.missingManualDownloads", { count: instance.missingManualDownloads.length })}{" "}
               <Link to={`/instances/${instance.id}`} className="underline">
-                ver detalhes
+                {t("instanceCard.viewDetails")}
               </Link>
             </p>
           )}
@@ -99,12 +101,12 @@ export function InstanceCard({ instance }: { instance: Instance }) {
               disabled={launchInstance.isPending}
               onClick={() => launchInstance.mutate(instance.id)}
             >
-              {launchInstance.isPending ? "Abrindo…" : "Jogar"}
+              {launchInstance.isPending ? t("instanceCard.opening") : t("instanceCard.play")}
             </PlayButton>
             <Button
               variant="outline"
               size="icon"
-              title="Reinstalar (repara arquivos faltando ou corrompidos)"
+              title={t("instanceCard.reinstallTitle")}
               disabled={retryInstall.isPending}
               onClick={() => retryInstall.mutate(instance.id)}
             >
@@ -116,7 +118,7 @@ export function InstanceCard({ instance }: { instance: Instance }) {
 
       {instance.status === "error" && (
         <div className="mt-3 space-y-2">
-          <p className="line-clamp-2 text-xs text-destructive">{instance.errorMessage ?? "Falha na instalação."}</p>
+          <p className="line-clamp-2 text-xs text-destructive">{instance.errorMessage ?? t("instanceCard.installFailed")}</p>
           <Button
             variant="outline"
             size="sm"
@@ -125,7 +127,7 @@ export function InstanceCard({ instance }: { instance: Instance }) {
             onClick={() => retryInstall.mutate(instance.id)}
           >
             <RotateCw size={13} />
-            {retryInstall.isPending ? "Tentando de novo…" : "Tentar de novo"}
+            {retryInstall.isPending ? t("instanceCard.retrying") : t("instanceCard.retry")}
           </Button>
         </div>
       )}

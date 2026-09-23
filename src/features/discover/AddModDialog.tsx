@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { useJobProgressStore } from "./job-progress-store";
 import type { DiscoverResult } from "./ResultRow";
 
 export function AddModDialog({ result, onClose }: { result: DiscoverResult; onClose: () => void }) {
+  const { t } = useTranslation();
   useJobEvents();
   const queryClient = useQueryClient();
   const { data: instances } = useInstances();
@@ -86,12 +88,10 @@ export function AddModDialog({ result, onClose }: { result: DiscoverResult; onCl
     <Dialog open onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="sm:max-w-lg" aria-live="polite">
         <DialogHeader>
-          <DialogTitle>Adicionar {result.title} a uma instância</DialogTitle>
+          <DialogTitle>{t("addModDialog.title", { title: result.title })}</DialogTitle>
         </DialogHeader>
 
-        <p className="text-sm text-muted-foreground">
-          Escolha em quais instâncias instalar. Só as que suportam este mod podem ser selecionadas.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("addModDialog.description")}</p>
 
         {isLoading ? (
           <div className="flex flex-col gap-2">
@@ -101,24 +101,24 @@ export function AddModDialog({ result, onClose }: { result: DiscoverResult; onCl
           </div>
         ) : isError ? (
           <div className="flex flex-col items-center gap-2 py-4">
-            <p className="text-sm text-destructive">Não deu pra conferir a compatibilidade agora.</p>
+            <p className="text-sm text-destructive">{t("addModDialog.compatCheckFailed")}</p>
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
-              Tentar de novo
+              {t("addModDialog.retry")}
             </Button>
           </div>
         ) : !instances || instances.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <p className="text-sm text-muted-foreground">Você ainda não tem nenhuma instância.</p>
+            <p className="text-sm text-muted-foreground">{t("addModDialog.noInstances")}</p>
             <CreateInstanceDialog />
           </div>
         ) : compatible.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <p className="text-sm text-muted-foreground">Nenhuma instância sua é compatível com esse mod agora.</p>
+            <p className="text-sm text-muted-foreground">{t("addModDialog.noCompatible")}</p>
             <CreateInstanceDialog />
           </div>
         ) : (
           <div className="scroll-thin max-h-80 overflow-y-auto">
-            <p className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">Compatíveis</p>
+            <p className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("addModDialog.compatibleSection")}</p>
             <div className="flex flex-col gap-1.5">
               {compatible.map((entry) => {
                 const isSelected = selected.has(entry.instanceId);
@@ -143,7 +143,7 @@ export function AddModDialog({ result, onClose }: { result: DiscoverResult; onCl
                         <p className="text-sm font-medium text-foreground">{instanceName(entry.instanceId)}</p>
                         {deps.length > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            Também será instalado: {deps.map((d) => d.fileName).join(", ")}
+                            {t("addModDialog.alsoInstalled", { files: deps.map((d) => d.fileName).join(", ") })}
                           </p>
                         )}
                       </div>
@@ -156,7 +156,7 @@ export function AddModDialog({ result, onClose }: { result: DiscoverResult; onCl
 
             {alreadyInstalled.length > 0 && (
               <>
-                <p className="mt-4 mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">Já instalado</p>
+                <p className="mt-4 mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("addModDialog.alreadyInstalledSection")}</p>
                 <div className="flex flex-col gap-1.5">
                   {alreadyInstalled.map((entry) => (
                     <div
@@ -169,7 +169,7 @@ export function AddModDialog({ result, onClose }: { result: DiscoverResult; onCl
                         <p className="text-sm font-medium text-foreground">{instanceName(entry.instanceId)}</p>
                       </div>
                       <span className="shrink-0 text-xs text-muted-foreground">
-                        Já instalado
+                        {t("addModDialog.alreadyInstalledSection")}
                         {entry.compat.status === "alreadyInstalled" && ` · v${entry.compat.installedVersion}`}
                       </span>
                     </div>
@@ -186,7 +186,7 @@ export function AddModDialog({ result, onClose }: { result: DiscoverResult; onCl
                   className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:text-foreground"
                 >
                   <ChevronDown size={12} className={cn("transition-transform", showIncompatible && "rotate-180")} />
-                  Incompatíveis ({incompatible.length})
+                  {t("addModDialog.incompatibleSection", { count: incompatible.length })}
                 </button>
                 {showIncompatible && (
                   <div className="mt-1.5 flex flex-col gap-1.5">
@@ -212,7 +212,7 @@ export function AddModDialog({ result, onClose }: { result: DiscoverResult; onCl
         {installing && (
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Instalando…</span>
+              <span>{t("addModDialog.installing")}</span>
               {job.total > 0 && (
                 <span>
                   {job.done}/{job.total}
@@ -222,17 +222,17 @@ export function AddModDialog({ result, onClose }: { result: DiscoverResult; onCl
             <ProgressBar value={job.total > 0 ? (job.done / job.total) * 100 : 0} />
           </div>
         )}
-        {job?.phase === "failed" && <p className="text-xs text-destructive">{job.error ?? "Falha ao instalar."}</p>}
+        {job?.phase === "failed" && <p className="text-xs text-destructive">{job.error ?? t("addModDialog.installFailed")}</p>}
         {install.isError && <p className="text-xs text-destructive">{install.error.message}</p>}
-        {justInstalled && <p className="text-xs text-primary">Instalado.</p>}
+        {justInstalled && <p className="text-xs text-primary">{t("addModDialog.installed")}</p>}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancelar
+            {t("addModDialog.cancel")}
           </Button>
           <Button disabled={selected.size === 0 || install.isPending || Boolean(installing)} onClick={() => install.mutate()}>
             {install.isPending || installing ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : null}
-            Adicionar a {selected.size} instância(s)
+            {t("addModDialog.addButton", { count: selected.size })}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Download, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ function loaderVersion(loader: { type: string } & Record<string, string>): strin
 }
 
 export function DownloadModpackDialog({ result, onClose }: { result: DiscoverResult; onClose: () => void }) {
+  const { t } = useTranslation();
   const { data: instances } = useInstances();
   const project = { source: result.source, projectId: result.projectId };
   const [versionId, setVersionId] = useState<string | undefined>(undefined);
@@ -64,24 +66,21 @@ export function DownloadModpackDialog({ result, onClose }: { result: DiscoverRes
     >
       <DialogContent className="sm:max-w-lg" aria-live="polite">
         <DialogHeader>
-          <DialogTitle>Baixar {result.title}</DialogTitle>
+          <DialogTitle>{t("downloadModpackDialog.title", { title: result.title })}</DialogTitle>
         </DialogHeader>
 
         {!jobId ? (
           <>
-            <p className="text-sm text-muted-foreground">
-              O launcher cria uma instância nova com a versão do Minecraft e o loader exatos do modpack e baixa todos
-              os mods.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("downloadModpackDialog.description")}</p>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Nome da instância</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("downloadModpackDialog.instanceName")}</label>
               <Input value={name} onChange={(event) => setName(event.target.value)} />
             </div>
 
             {preview && preview.versions.length > 1 && (
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Versão do modpack</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("downloadModpackDialog.modpackVersion")}</label>
                 <Select value={versionId} onValueChange={setVersionId}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -98,15 +97,15 @@ export function DownloadModpackDialog({ result, onClose }: { result: DiscoverRes
             )}
 
             {isLoading ? (
-              <p className="text-sm text-muted-foreground">Carregando…</p>
+              <p className="text-sm text-muted-foreground">{t("downloadModpackDialog.loading")}</p>
             ) : preview ? (
               <div className="rounded-lg border border-border bg-card text-sm">
                 {[
-                  ["Minecraft", preview.mcVersion],
-                  ["Loader", `${loaderName(preview.loader)} ${loaderVersion(preview.loader as never)}`],
-                  ["Mods", `${preview.modCount} mods`],
-                  ["Download", formatBytes(preview.downloadSizeBytes)],
-                  ["RAM sugerida", `${Math.round(preview.suggestedRamMb / 1024)} GB`],
+                  [t("downloadModpackDialog.minecraft"), preview.mcVersion],
+                  [t("downloadModpackDialog.loader"), `${loaderName(preview.loader)} ${loaderVersion(preview.loader as never)}`],
+                  [t("downloadModpackDialog.mods"), t("downloadModpackDialog.modCount", { count: preview.modCount })],
+                  [t("downloadModpackDialog.download"), formatBytes(preview.downloadSizeBytes)],
+                  [t("downloadModpackDialog.suggestedRam"), `${Math.round(preview.suggestedRamMb / 1024)} GB`],
                 ].map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between border-b border-border px-4 py-2.5 last:border-0">
                     <span className="text-muted-foreground">{label}</span>
@@ -120,32 +119,32 @@ export function DownloadModpackDialog({ result, onClose }: { result: DiscoverRes
 
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>
-                Cancelar
+                {t("downloadModpackDialog.cancel")}
               </Button>
               <Button disabled={!preview || download.isPending} onClick={() => download.mutate()} className="gap-1.5">
                 {download.isPending && <Loader2 size={14} className="animate-spin" />}
                 <Download size={14} />
-                Baixar e criar instância
+                {t("downloadModpackDialog.downloadButton")}
               </Button>
             </DialogFooter>
           </>
         ) : (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             {failed ? (
-              <p className="text-sm text-destructive">{job?.error ?? "Falha ao instalar o modpack."}</p>
+              <p className="text-sm text-destructive">{job?.error ?? t("downloadModpackDialog.installFailed")}</p>
             ) : finished ? (
-              <p className="text-sm text-primary">Instância criada — já pode jogar.</p>
+              <p className="text-sm text-primary">{t("downloadModpackDialog.instanceReady")}</p>
             ) : (
               <>
                 <Loader2 size={20} className="animate-spin text-primary" />
                 <p className="text-sm text-muted-foreground">
-                  {job ? `${jobPhaseLabels[job.phase]}${job.total > 0 ? ` — ${job.done}/${job.total}` : ""}` : "Preparando…"}
+                  {job ? `${jobPhaseLabels[job.phase]}${job.total > 0 ? ` — ${job.done}/${job.total}` : ""}` : t("downloadModpackDialog.preparing")}
                 </p>
               </>
             )}
             <DialogFooter className="w-full">
               <Button variant="outline" onClick={onClose}>
-                Fechar
+                {t("downloadModpackDialog.close")}
               </Button>
             </DialogFooter>
           </div>

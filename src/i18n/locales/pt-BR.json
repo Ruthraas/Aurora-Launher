@@ -27,5 +27,128 @@
     "title": "Configurações",
     "language": "Idioma",
     "about": "Sobre"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "loading": "Carregando…"
+  },
+  "instanceCard": {
+    "play": "Jogar",
+    "opening": "Abrindo…",
+    "exportTitle": "Exportar instância (.zip)",
+    "reinstallTitle": "Reinstalar (repara arquivos faltando ou corrompidos)",
+    "retry": "Tentar de novo",
+    "retrying": "Tentando de novo…",
+    "installFailed": "Falha na instalação.",
+    "missingManualDownloads_one": "{{count}} mod pra baixar na mão —",
+    "missingManualDownloads_other": "{{count}} mod(s) pra baixar na mão —",
+    "viewDetails": "ver detalhes",
+    "confirmDeleteTitle": "Excluir \"{{name}}\"?",
+    "confirmDeleteDescription": "Apaga a instância inteira — mundos, configurações e mods instalados. Não tem como desfazer.",
+    "delete": "Excluir"
+  },
+  "instancesPage": {
+    "title": "Instâncias",
+    "searchPlaceholder": "Buscar",
+    "import": "Importar",
+    "noMatch": "Nenhuma instância bate com esse filtro.",
+    "filters": {
+      "all": "Todas",
+      "vanilla": "Vanilla",
+      "fabric": "Fabric",
+      "forge": "Forge",
+      "neoforge": "NeoForge",
+      "quilt": "Quilt"
+    }
+  },
+  "instanceDetail": {
+    "notFound": "Instância não encontrada.",
+    "backToInstances": "Voltar pra Instâncias",
+    "tabs": {
+      "overview": "Visão geral",
+      "mods": "Mods",
+      "worlds": "Mundos",
+      "logs": "Logs"
+    }
+  },
+  "overview": {
+    "optimizeTitle": "Otimizar desempenho",
+    "optimizeDescription": "Mods compatíveis com {{version}} e {{loader}}. Você confere a lista antes de instalar.",
+    "installedSuccess": "Instalado com sucesso",
+    "installingMods": "Instalando mods…",
+    "selectedCount": "{{selected}} de {{total}} selecionados",
+    "installButton": "Instalar {{count}} mod(s)",
+    "alreadyInstalled": "Já instalado",
+    "ram": "Memória",
+    "jvmFlags": "Flags da JVM",
+    "extraFlags": "Flags extras",
+    "extraFlagsPlaceholder": "ex.: -Dfoo=bar -XX:+AlwaysPreTouch",
+    "extraFlagsHint": "Separadas por espaço — aplicadas depois do preset, pra quem sabe o que está fazendo.",
+    "openFolder": "Abrir pasta",
+    "loadingRecommendations": "Carregando recomendações…",
+    "presetNone": "Padrão (nenhuma flag extra)",
+    "presetG1gc": "G1GC otimizado (recomendado)"
+  },
+  "optimizeButton": {
+    "label": "Otimizar",
+    "optimized": "Otimizado",
+    "preparing": "Preparando…",
+    "tooltip": "Varredura completa: instala tudo que for compatível para otimizar essa instância e ajusta o options.txt"
+  },
+  "logsTab": {
+    "empty": "Nenhum log ainda",
+    "emptyDescription": "Logs aparecem aqui depois que a instância for lançada ao menos uma vez.",
+    "refresh": "Atualizar",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "loading": "Carregando…",
+    "emptyFile": "(arquivo vazio)"
+  },
+  "addModDialog": {
+    "title": "Adicionar {{title}} a uma instância",
+    "description": "Escolha em quais instâncias instalar. Só as que suportam este mod podem ser selecionadas.",
+    "compatCheckFailed": "Não deu pra conferir a compatibilidade agora.",
+    "retry": "Tentar de novo",
+    "noInstances": "Você ainda não tem nenhuma instância.",
+    "noCompatible": "Nenhuma instância sua é compatível com esse mod agora.",
+    "compatibleSection": "Compatíveis",
+    "alsoInstalled": "Também será instalado: {{files}}",
+    "alreadyInstalledSection": "Já instalado",
+    "incompatibleSection": "Incompatíveis ({{count}})",
+    "installing": "Instalando…",
+    "installFailed": "Falha ao instalar.",
+    "installed": "Instalado.",
+    "cancel": "Cancelar",
+    "addButton_one": "Adicionar a {{count}} instância",
+    "addButton_other": "Adicionar a {{count}} instâncias"
+  },
+  "downloadModpackDialog": {
+    "title": "Baixar {{title}}",
+    "description": "O launcher cria uma instância nova com a versão do Minecraft e o loader exatos do modpack e baixa todos os mods.",
+    "instanceName": "Nome da instância",
+    "modpackVersion": "Versão do modpack",
+    "loading": "Carregando…",
+    "minecraft": "Minecraft",
+    "loader": "Loader",
+    "mods": "Mods",
+    "modCount": "{{count}} mods",
+    "download": "Download",
+    "suggestedRam": "RAM sugerida",
+    "cancel": "Cancelar",
+    "downloadButton": "Baixar e criar instância",
+    "installFailed": "Falha ao instalar o modpack.",
+    "instanceReady": "Instância criada — já pode jogar.",
+    "preparing": "Preparando…",
+    "close": "Fechar"
+  },
+  "worldsTab": {
+    "empty": "Nenhum mundo ainda",
+    "emptyDescription": "Mundos aparecem aqui depois que você criar um dentro do jogo.",
+    "title": "Mundos ({{count}})",
+    "openFolder": "Abrir pasta do mundo",
+    "delete": "Excluir mundo",
+    "confirmDeleteTitle": "Excluir \"{{name}}\"?",
+    "confirmDeleteDescription": "Apaga o mundo pra sempre — todo o progresso salvo nele. Não tem como desfazer."
   }
 }

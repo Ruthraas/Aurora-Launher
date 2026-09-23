@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { FolderOpen, Globe, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +16,7 @@ function formatSize(bytes: number): string {
 }
 
 function WorldRow({ instanceId, world, onDeleted }: { instanceId: string; world: WorldInfo; onDeleted: () => void }) {
+  const { t, i18n } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const { data: iconDataUrl } = useQuery({
     queryKey: ["world-icon", instanceId, world.folderName],
@@ -43,7 +45,7 @@ function WorldRow({ instanceId, world, onDeleted }: { instanceId: string; world:
         <p className="truncate text-sm font-medium text-foreground">{world.folderName}</p>
         <p className="text-xs text-muted-foreground">
           {formatSize(world.sizeBytes)}
-          {world.lastPlayed && ` · ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(world.lastPlayed))}`}
+          {world.lastPlayed && ` · ${new Intl.DateTimeFormat(i18n.language, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(world.lastPlayed))}`}
         </p>
       </div>
       <Button
@@ -51,7 +53,7 @@ function WorldRow({ instanceId, world, onDeleted }: { instanceId: string; world:
         size="icon-sm"
         className="opacity-0 transition-opacity group-hover:opacity-100"
         onClick={() => void openInstanceWorldFolder(instanceId, world.folderName)}
-        title="Abrir pasta do mundo"
+        title={t("worldsTab.openFolder")}
       >
         <FolderOpen size={14} />
       </Button>
@@ -60,7 +62,7 @@ function WorldRow({ instanceId, world, onDeleted }: { instanceId: string; world:
         size="icon-sm"
         className="opacity-0 transition-opacity group-hover:opacity-100"
         onClick={() => setConfirming(true)}
-        title="Excluir mundo"
+        title={t("worldsTab.delete")}
       >
         <Trash2 size={14} />
       </Button>
@@ -68,9 +70,9 @@ function WorldRow({ instanceId, world, onDeleted }: { instanceId: string; world:
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
-        title={`Excluir "${world.folderName}"?`}
-        description="Apaga o mundo pra sempre — todo o progresso salvo nele. Não tem como desfazer."
-        confirmLabel="Excluir"
+        title={t("worldsTab.confirmDeleteTitle", { name: world.folderName })}
+        description={t("worldsTab.confirmDeleteDescription")}
+        confirmLabel={t("worldsTab.delete")}
         onConfirm={() => {
           remove.mutate();
           setConfirming(false);
@@ -85,6 +87,7 @@ function WorldRow({ instanceId, world, onDeleted }: { instanceId: string; world:
  *  manualmente até a pasta). Só leitura + apagar; renomear mundo mexe
  *  no `level.dat` (NBT) e fica fora do escopo por ora. */
 export function WorldsTab({ instance }: { instance: Instance }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: worlds, isLoading } = useQuery({
     queryKey: ["instance-worlds", instance.id],
@@ -98,12 +101,12 @@ export function WorldsTab({ instance }: { instance: Instance }) {
   if (isLoading) return <Skeleton className="h-64 w-full rounded-xl" />;
 
   if (!worlds || worlds.length === 0) {
-    return <EmptyState icon={Globe} title="Nenhum mundo ainda" description="Mundos aparecem aqui depois que você criar um dentro do jogo." />;
+    return <EmptyState icon={Globe} title={t("worldsTab.empty")} description={t("worldsTab.emptyDescription")} />;
   }
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Mundos ({worlds.length})</p>
+      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("worldsTab.title", { count: worlds.length })}</p>
       <div className="mt-2 divide-y divide-border">
         {worlds.map((world) => (
           <WorldRow key={world.folderName} instanceId={instance.id} world={world} onDeleted={invalidate} />

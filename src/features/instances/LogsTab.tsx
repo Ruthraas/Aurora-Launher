@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Check, Copy, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,6 +20,7 @@ function formatSize(bytes: number): string {
  *  os crash-reports do jogo, sem o usuário precisar navegar até a
  *  pasta manualmente. Só leitura — nada aqui edita ou apaga arquivo. */
 export function LogsTab({ instance }: { instance: Instance }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -60,11 +62,7 @@ export function LogsTab({ instance }: { instance: Instance }) {
 
   if (!files || files.length === 0) {
     return (
-      <EmptyState
-        icon={FileText}
-        title="Nenhum log ainda"
-        description="Logs aparecem aqui depois que a instância for lançada ao menos uma vez."
-      />
+      <EmptyState icon={FileText} title={t("logsTab.empty")} description={t("logsTab.emptyDescription")} />
     );
   }
 
@@ -83,20 +81,20 @@ export function LogsTab({ instance }: { instance: Instance }) {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="icon" onClick={refresh} title="Atualizar">
+        <Button variant="outline" size="icon" onClick={refresh} title={t("logsTab.refresh")}>
           <RefreshCw size={14} />
         </Button>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void copyContent()} disabled={!content}>
           {copied ? <Check size={14} /> : <Copy size={14} />}
-          {copied ? "Copiado" : "Copiar"}
+          {copied ? t("logsTab.copied") : t("logsTab.copy")}
         </Button>
       </div>
 
       <div className="scroll-thin min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-card p-4">
         {loadingContent ? (
-          <p className="text-sm text-muted-foreground">Carregando…</p>
+          <p className="text-sm text-muted-foreground">{t("logsTab.loading")}</p>
         ) : (
-          <pre className="font-mono text-xs whitespace-pre-wrap text-foreground">{content || "(arquivo vazio)"}</pre>
+          <pre className="font-mono text-xs whitespace-pre-wrap text-foreground">{content || t("logsTab.emptyFile")}</pre>
         )}
       </div>
     </div>
