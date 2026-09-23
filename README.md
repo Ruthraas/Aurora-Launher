@@ -280,6 +280,45 @@ Ambos, filtro de loader, seletor de layout Lista/Grade/Grade compacta) — pedid
 ("tem que aparecer a lista igual ao CurseForge... e as opções de Modrinth/CurseForge") resolvido reaproveitando
 o mesmo componente em vez de duas telas de busca divergentes.
 
+## Auditoria completa do projeto → 17 issues fechadas (2026-09-22)
+
+Pedido do usuário: analisar o projeto inteiro (front e back) e abrir issues
+separadas por área no GitHub, depois resolver uma por uma via `gh` CLI. Um
+agente fez a auditoria (sem tocar em código, só relatando); as 17 issues
+(#1-#17) cobriram desde correções pontuais até features novas. Todas fechadas
+nesta rodada, cada uma com commit próprio referenciando o número:
+
+- **Validação/segurança**: nome de instância vazio/gigante agora é rejeitado;
+  confirmação antes de excluir instância/conta; upload de skin/capa valida
+  assinatura PNG + dimensão real do Minecraft; chave da API do CurseForge saiu
+  do `settings.json` em texto puro e foi pro cofre de credenciais do SO (crate
+  `keyring`), com migração automática de instalação existente.
+- **Robustez**: timeout de download de arquivo grande separado do timeout de
+  chamada de API pequena (30s matava download real de modpack lento); testes
+  novos em `launch.rs` (ordem de montagem das flags de JVM) e `mods_compat.rs`
+  (caminho "já instalado" — a mesma classe de bug que já apareceu 3x nesta
+  sessão), ambas áreas sem nenhum teste até então.
+- **Performance/UX**: checagem de compatibilidade de mod/otimização em
+  paralelo (`futures::future::try_join_all`) em vez de uma instância/mod por
+  vez em série; `staleTime` no `QueryClient`; anel de foco visível pra
+  navegação por teclado; `ErrorBoundary` + `onError` global de query/mutation.
+- **Infra**: CI real no GitHub Actions (`cargo test` + `clippy` + `tsc` +
+  build do frontend em todo push/PR) e release automatizada numa tag `v*`
+  (via `tauri-apps/tauri-action`) — as releases anteriores (v0.1.0/v0.2.0)
+  foram buildadas na mão; a partir daqui o pipeline faz isso sozinho.
+- **Features novas**: campo de flags de JVM customizadas (aplicadas por
+  último, depois do preset); aba "Logs" (expõe os logs que o launcher já
+  gravava, sem visualizador até então); export/import de instância inteira
+  num `.zip` (config+mods+saves, sem o cache compartilhado — reinstala
+  bibliotecas/assets automaticamente ao importar); aba "Mundos" (lista/abre
+  pasta/apaga saves, com ícone e tamanho reais).
+- **i18n**: sistema de tradução existia mas só 6 de 93 arquivos usavam de
+  verdade — migradas as telas mais visíveis (instâncias, otimização, logs,
+  mundos, diálogos de instalar mod/modpack), chaves sincronizadas 1:1 entre
+  `pt-BR.json`/`en.json`. Não cobre 100% do app (Discover/Settings mais
+  avançado ficou de fora) — decisão consciente de escopo, documentada na
+  issue original.
+
 ## Otimização profissional + redesign da tela de instância (2026-09-21)
 
 Pedido do usuário: melhorar o `options.txt` com mais técnicas reais de FPS, tirar
